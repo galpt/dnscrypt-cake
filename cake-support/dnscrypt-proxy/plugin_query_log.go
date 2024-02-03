@@ -18,10 +18,6 @@ var (
 	uplinkInterface   = "enp3s0"
 	downlinkInterface = "ifb4enp3s0"
 
-	// adjust them according to your network speed
-	maxDL int64 = 5 // in gbit
-	maxUL int64 = 5 // in gbit
-
 	// do not touch
 	estRTT time.Duration
 )
@@ -123,7 +119,7 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// adjust the parameters other than RTT and Bandwidth according to your needs.
 		// -------------------
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "bandwidth", fmt.Sprintf("%vgbit", maxUL), "diffserv8", "nat", "nowash", "no-split-gso", "rtt", fmt.Sprintf("%dus", estRTT), "overhead", "256", "noatm", "dual-srchost", "memlimit", "32mb")
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", estRTT))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
@@ -131,7 +127,7 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 			return errors.New("Failed setting up CAKE's uplink")
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "bandwidth", fmt.Sprintf("%vgbit", maxDL), "diffserv8", "nat", "nowash", "no-split-gso", "rtt", fmt.Sprintf("%dus", estRTT), "overhead", "256", "noatm", "dual-dsthost", "memlimit", "32mb")
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", estRTT))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
