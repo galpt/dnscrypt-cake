@@ -28,6 +28,24 @@ $ go build
 
 * * *
 
+# See `dnscrypt-cake` in action
+
+We are testing `dnscrypt-cake` in our server here:
+
+https://net.0ms.dev:7777/netstat
+
+This server is used as our testing environment as well as a speedtest server for both Ookla and LibreSpeed.
+
+### Ookla
+
+![Ookla](https://github.com/galpt/dnscrypt-cake/blob/main/img/ookla.png)
+
+### LibreSpeed
+
+![LibreSpeed](https://github.com/galpt/dnscrypt-cake/blob/main/img/librespeed.png)
+
+* * *
+
 # Credits
 
 Although we are writing this guide to let people know about our implementation, it was made possible by using other things provided by the developers and/or companies mentioned in this guide.
