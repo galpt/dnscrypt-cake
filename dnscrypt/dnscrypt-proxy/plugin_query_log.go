@@ -17,8 +17,9 @@ const (
 	// adjust to minimum network speed where you're sure
 	// there won't be bufferbloats.
 	// 2 mbit is small enough for cellular networks.
-	minUL = 2 // mbit
-	minDL = 2 // mbit
+	// 1000 mbit for most servers.
+	minUL = 1000 // mbit
+	minDL = 1000 // mbit
 )
 
 var (
