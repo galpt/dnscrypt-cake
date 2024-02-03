@@ -16,8 +16,9 @@ import (
 const (
 	// adjust to minimum network speed where you're sure
 	// there won't be bufferbloats.
-	minUL = 3000 // mbit
-	minDL = 3000 // mbit
+	// 2 mbit is small enough for cellular networks.
+	minUL = 2 // mbit
+	minDL = 2 // mbit
 )
 
 var (
@@ -27,8 +28,8 @@ var (
 
 	// try to adjust cake shaper automatically based on rtt.
 	// values are in mbit.
-	bwUL = 3000
-	bwDL = 3000
+	bwUL = 2
+	bwDL = 2
 
 	// do not touch.
 	// default to 100ms rtt.
@@ -68,7 +69,7 @@ func cake(minUL int, minDL int, newRTT time.Duration, oldRTT time.Duration) {
 
 		// keep increasing bandwidth until it detects an RTT increase again.
 		bwUL++
-		bwUL++
+		bwDL++
 
 	}
 }
@@ -177,9 +178,9 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// until it detects an RTT increase from the "newRTT" again,
 		// then repeat the cycle from the start.
 		if newRTT > oldRTT {
-			// divide bandwidth by half
-			bwUL = bwUL / 2
-			bwDL = bwDL / 2
+			// reduce current bandwidth by 20%
+			bwUL = bwUL - ((bwUL * 20) / 100)
+			bwDL = bwDL - ((bwDL * 20) / 100)
 
 			// if the divided bandwidth is less than minUL/minDL,
 			// set them to minUL & minDL instead.
