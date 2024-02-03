@@ -6,6 +6,8 @@ According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-
 
 `dnscrypt-cake` is an attempt to adjust CAKE's `rtt` parameter in real-time based on real latency per DNS request using a slightly modified version of [dnscrypt-proxy 2](https://github.com/DNSCrypt/dnscrypt-proxy).
 
+You could combine `dnscrypt-cake` with other tools (i.e. [cake-autorate by lynxthecat](https://github.com/lynxthecat/cake-autorate)) or just use CAKE's built-in `autorate-ingress` as adjusting the `rtt` parameter should make CAKE able to react to the real network latency and throughput better instead of using the default `rtt 100ms` value.
+
 * * *
 
 ## How to compile the code
@@ -34,7 +36,7 @@ We are testing `dnscrypt-cake` in our server here:
 
 https://net.0ms.dev:7777/netstat
 
-This server is used as our testing environment as well as a speedtest server for both Ookla and LibreSpeed.
+This server is being used as our testing environment as well as a speedtest server for both Ookla and LibreSpeed.
 
 ### Ookla
 
