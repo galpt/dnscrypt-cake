@@ -13,14 +13,65 @@ import (
 	"github.com/miekg/dns"
 )
 
+const (
+	// adjust to minimum network speed where you're sure
+	// there won't be bufferbloats.
+	minUL = 3000 // mbit
+	minDL = 3000 // mbit
+)
+
 var (
 	// adjust them according to your network interface names
 	uplinkInterface   = "enp3s0"
 	downlinkInterface = "ifb4enp3s0"
 
-	// do not touch
-	estRTT time.Duration
+	// try to adjust cake shaper automatically based on rtt.
+	// values are in mbit.
+	bwUL = 3000
+	bwDL = 3000
+
+	// do not touch.
+	// default to 100ms rtt.
+	newRTT time.Duration = 100000000 // this is in nanoseconds
+	oldRTT time.Duration = 100000000 // this is in nanoseconds
 )
+
+// function for adjusting cake
+func cake(minUL int, minDL int, newRTT time.Duration, oldRTT time.Duration) {
+
+	// infinite loop to change cake parameters in real-time
+	for {
+
+		// convert to microseconds
+		newRTT = newRTT / time.Microsecond
+		oldRTT = oldRTT / time.Microsecond
+
+		// update cake settings based on real world data.
+		// adjust the parameters other than RTT and Bandwidth according to your needs.
+		// -------------------
+		// set uplink
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
+		output, err := cakeUplink.Output()
+
+		if err != nil {
+			fmt.Println(err.Error() + ": " + string(output))
+			return
+		}
+		// set downlink
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwDL))
+		output, err = cakeDownlink.Output()
+
+		if err != nil {
+			fmt.Println(err.Error() + ": " + string(output))
+			return
+		}
+
+		// keep increasing bandwidth until it detects an RTT increase again.
+		bwUL++
+		bwUL++
+
+	}
+}
 
 type PluginQueryLog struct {
 	logger        io.Writer
@@ -112,28 +163,57 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 			StringQuote(pluginsState.serverName),
 		)
 
-		// adjust CAKE's RTT dynamically in microseconds
-		estRTT = requestDuration / time.Microsecond
+		// save DNS latency as the new RTT for cake
+		newRTT = requestDuration
+
+		// convert to microseconds
+		newRTT = newRTT / time.Microsecond
+		oldRTT = oldRTT / time.Microsecond
+
+		// check if the real RTT increases (unstable) or not.
+		// if the "newRTT" does increase compared to the "oldRTT",
+		// then reduce cake's bandwidth to minUL/minDL.
+		// after reducing the bandwidth, keep increasing the bandwidth
+		// until it detects an RTT increase from the "newRTT" again,
+		// then repeat the cycle from the start.
+		if newRTT > oldRTT {
+			// divide bandwidth by half
+			bwUL = bwUL / 2
+			bwDL = bwDL / 2
+
+			// if the divided bandwidth is less than minUL/minDL,
+			// set them to minUL & minDL instead.
+			if bwUL < minUL {
+				bwUL = minUL
+			}
+			if bwDL < minDL {
+				bwDL = minDL
+			}
+		}
 
 		// update cake settings based on real world data.
 		// adjust the parameters other than RTT and Bandwidth according to your needs.
 		// -------------------
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", estRTT))
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
 			fmt.Println(err.Error() + ": " + string(output))
-			return errors.New("Failed setting up CAKE's uplink")
+			return errors.New("Failed setting up cakeUplink")
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", estRTT))
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwDL))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
 			fmt.Println(err.Error() + ": " + string(output))
-			return errors.New("Failed setting up CAKE's downlink")
+			return errors.New("Failed setting up cakeDownlink")
 		}
+
+		// update oldRTT
+		oldRTT = newRTT
+
 	} else if plugin.format == "ltsv" {
 		cached := 0
 		if pluginsState.cacheHit {
