@@ -6,7 +6,7 @@ According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-
 
 `dnscrypt-cake` is an attempt to adjust CAKE's `rtt` parameter in real-time based on real latency per DNS request using a slightly modified version of [dnscrypt-proxy 2](https://github.com/DNSCrypt/dnscrypt-proxy). In addition to that, it will also adjust `bandwidth` based on the minimum value you think your network will be bufferbloat-free, and try to increase it continuously from there.
 
-This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-autorate) project implemented in Go.
+This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-autorate) project implemented in Go, but this is potentially a better implementation since it's adjusting CAKE's `rtt` and `bandwidth` based on your every DNS request and what website you are visiting, not by only ping-ing to `1.1.1.1`, `8.8.8.8` and/or any other DNS servers.
 
 * * *
 
@@ -17,6 +17,7 @@ This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-
 3. Edit the `plugin_query_log.go` file and adjust these values:
    1. `uplinkInterface` and `downlinkInterface` to your network interface names.
    2. `minDL` and `minUL` to your minimum network bandwidth where you think there won't be any bufferbloat.
+   3. `maxDL` and `maxUL` to your maximum network bandwidth advertised by your ISP (recommended to limit them to 90%).
 
 
 4. Then, simply compile the code with the following commands:

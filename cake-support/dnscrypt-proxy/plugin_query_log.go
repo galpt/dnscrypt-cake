@@ -14,12 +14,20 @@ import (
 )
 
 const (
-	// adjust to minimum network speed where you're sure
-	// there won't be bufferbloats.
+	// adjust "minUL" and "minDL" based on the minimum speed
+	// where you're sure there won't be bufferbloats.
+	// ------
+	// adjust "maxUL" and "maxDL" based on the maximum speed
+	// where you're sure there won't be bufferbloats.
+	// usually they can be 90% of the total advertised speed by ISP.
+	// ------
 	// 2 mbit is small enough for cellular networks.
 	// 1000 mbit for most servers.
-	minUL = 1000 // mbit
-	minDL = 1000 // mbit
+	// values are in mbit.
+	minUL = 1000
+	minDL = 1000
+	maxUL = 4000
+	maxDL = 4000
 )
 
 var (
@@ -50,7 +58,7 @@ func cake(minUL int, minDL int, newRTT time.Duration, oldRTT time.Duration) {
 
 		// update cake settings based on real world data.
 		// adjust the parameters other than RTT and Bandwidth according to your needs.
-		// -------------------
+		// ------
 		// set uplink
 		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
 		output, err := cakeUplink.Output()
@@ -179,9 +187,10 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// until it detects an RTT increase from the "newRTT" again,
 		// then repeat the cycle from the start.
 		if newRTT > oldRTT {
-			// reduce current bandwidth by 20%
-			bwUL = bwUL - ((bwUL * 20) / 100)
-			bwDL = bwDL - ((bwDL * 20) / 100)
+
+			// reduce current bandwidth by 10%
+			bwUL = bwUL - ((bwUL * 10) / 100)
+			bwDL = bwDL - ((bwDL * 10) / 100)
 
 			// if the divided bandwidth is less than minUL/minDL,
 			// set them to minUL & minDL instead.
@@ -191,11 +200,20 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 			if bwDL < minDL {
 				bwDL = minDL
 			}
+
+			// if bwUL/bwDL is more than maxUL/maxDL,
+			// set them to maxUL & maxDL instead.
+			if bwUL > maxUL {
+				bwUL = maxUL
+			}
+			if bwDL > maxDL {
+				bwDL = maxDL
+			}
 		}
 
 		// update cake settings based on real world data.
 		// adjust the parameters other than RTT and Bandwidth according to your needs.
-		// -------------------
+		// ------
 		// set uplink
 		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
 		output, err := cakeUplink.Output()
