@@ -30,6 +30,10 @@ $ go mod tidy
 $ go build
 ```
 
+> :information_source: *Note that:*
+> 1. You have to run `dnscrypt-cake` with `sudo` since it needs to change linux qdisc, so it needs enough permissions to do that.
+> 2. It's not recommended to change `cakeUplink` and `cakeDownlink` parameters in the `plugin_query_log.go` file, but change cake's settings directly from your terminal.
+
 * * *
 
 # See `dnscrypt-cake` in action
