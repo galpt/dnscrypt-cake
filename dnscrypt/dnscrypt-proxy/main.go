@@ -29,7 +29,7 @@ type App struct {
 func main() {
 
 	// start cake function in a separate goroutine
-	go cake(newRTT, oldRTT)
+	go cake()
 
 	tzErr := TimezoneSetup()
 	dlog.Init("dnscrypt-proxy", dlog.SeverityNotice, "DAEMON")

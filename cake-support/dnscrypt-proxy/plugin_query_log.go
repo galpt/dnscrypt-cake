@@ -47,7 +47,7 @@ var (
 )
 
 // function for adjusting cake
-func cake(newRTT time.Duration, oldRTT time.Duration) {
+func cake() {
 
 	// infinite loop to change cake parameters in real-time
 	for {
