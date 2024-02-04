@@ -6,6 +6,14 @@ According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-
 
 `dnscrypt-cake` is an attempt to adjust CAKE's `rtt` parameter in real-time based on real latency per DNS request using a slightly modified version of [dnscrypt-proxy 2](https://github.com/DNSCrypt/dnscrypt-proxy). In addition to that, it will also adjust `bandwidth` based on the minimum value you think your network will be bufferbloat-free, and try to increase it continuously from there while constantly monitoring your real RTT.
 
+Cloudflare said that [almost everything on the Internet starts with a DNS request](https://developers.cloudflare.com/1.1.1.1/privacy/public-dns-resolver/#:~:text=Nearly%20everything%20on%20the%20Internet%20starts%20with%20a%20DNS%20request), so that's why we made this implementation.
+
+Some of the possible ways we can measure the user's real RTT are by using the following methods:
+1. a transparent proxy (some kind of HTTP CONNECT proxy or something like that).
+2. a DNS proxy server (this is probably the easiest way these days).
+
+We think that adjusting CAKE's `rtt` and `bandwidth` using a DNS server running on the user's machine is a good way to improve the user's network performance as early as possible before the other Internet assets can be loaded.
+
 This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-autorate) project implemented in Go, but this is potentially a better implementation since it's adjusting CAKE's `rtt` and `bandwidth` based on your every DNS request and what website you are visiting, not by only ping-ing to `1.1.1.1`, `8.8.8.8` and/or any other DNS servers.
 
 This implementation is suitable for servers and networks where most of the users are actively sending DNS requests.
