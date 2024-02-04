@@ -24,8 +24,8 @@ const (
 	// 2 mbit is small enough for cellular networks.
 	// 1000 mbit for most servers.
 	// values are in mbit.
-	minUL = 1000
-	minDL = 1000
+	minUL = 2000
+	minDL = 2000
 	maxUL = 4000
 	maxDL = 4000
 )
@@ -47,7 +47,7 @@ var (
 )
 
 // function for adjusting cake
-func cake(minUL int, minDL int, newRTT time.Duration, oldRTT time.Duration) {
+func cake(newRTT time.Duration, oldRTT time.Duration) {
 
 	// infinite loop to change cake parameters in real-time
 	for {
