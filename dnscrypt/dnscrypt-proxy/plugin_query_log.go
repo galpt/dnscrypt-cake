@@ -14,6 +14,10 @@ import (
 )
 
 const (
+	// adjust them according to your network interface names
+	uplinkInterface   = "enp3s0"
+	downlinkInterface = "ifb4enp3s0"
+
 	// adjust "minUL" and "minDL" based on the minimum speed
 	// where you're sure there won't be bufferbloats.
 	// ------
@@ -31,9 +35,6 @@ const (
 )
 
 var (
-	// adjust them according to your network interface names
-	uplinkInterface   = "enp3s0"
-	downlinkInterface = "ifb4enp3s0"
 
 	// try to adjust cake shaper automatically based on rtt.
 	// values are in mbit.
