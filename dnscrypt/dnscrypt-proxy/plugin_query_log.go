@@ -56,6 +56,37 @@ func cake(minUL int, minDL int, newRTT time.Duration, oldRTT time.Duration) {
 		newRTT = newRTT / time.Microsecond
 		oldRTT = oldRTT / time.Microsecond
 
+		// check if the real RTT increases (unstable) or not.
+		// if the "newRTT" does increase compared to the "oldRTT",
+		// then reduce cake's bandwidth by n-percent.
+		// after reducing the bandwidth, keep increasing the bandwidth
+		// until it detects an RTT increase from the "newRTT" again,
+		// then repeat the cycle from the start.
+		if newRTT > oldRTT {
+
+			// reduce current bandwidth by 10%
+			bwUL = bwUL - ((bwUL * 10) / 100)
+			bwDL = bwDL - ((bwDL * 10) / 100)
+
+			// if the divided bandwidth is less than minUL/minDL,
+			// set them to minUL & minDL instead.
+			if bwUL < minUL {
+				bwUL = minUL
+			}
+			if bwDL < minDL {
+				bwDL = minDL
+			}
+
+			// if bwUL/bwDL is more than maxUL/maxDL,
+			// set them to maxUL & maxDL instead.
+			if bwUL > maxUL {
+				bwUL = maxUL
+			}
+			if bwDL > maxDL {
+				bwDL = maxDL
+			}
+		}
+
 		// update cake settings based on real world data.
 		// adjust the parameters other than RTT and Bandwidth according to your needs.
 		// ------
@@ -182,7 +213,7 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 
 		// check if the real RTT increases (unstable) or not.
 		// if the "newRTT" does increase compared to the "oldRTT",
-		// then reduce cake's bandwidth to minUL/minDL.
+		// then reduce cake's bandwidth by n-percent.
 		// after reducing the bandwidth, keep increasing the bandwidth
 		// until it detects an RTT increase from the "newRTT" again,
 		// then repeat the cycle from the start.
