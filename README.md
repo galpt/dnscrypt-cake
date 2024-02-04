@@ -12,6 +12,12 @@ This implementation is suitable for servers and networks where most of the users
 
 * * *
 
+## How it works
+
+![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
+
+* * *
+
 ## How to compile the code
 
 1. Download and install [The Go Programming Language](https://go.dev/).
@@ -36,7 +42,7 @@ $ go build
 
 * * *
 
-# See `dnscrypt-cake` in action
+## See `dnscrypt-cake` in action
 
 We are testing `dnscrypt-cake` in our server here:
 
@@ -54,7 +60,7 @@ This server is being used as our testing environment as well as a speedtest serv
 
 * * *
 
-# Credits
+## Credits
 
 Although we are writing this guide to let people know about our implementation, it was made possible by using other things provided by the developers and/or companies mentioned in this guide.
 
