@@ -1,5 +1,9 @@
 # dnscrypt-cake
 
+> :information_source: Note that:
+>
+> The goal of this project is to provide another alternative that *"just works"* for not-so-technical users. Thus, users only need to set these values correctly: `uplinkInterface`, `downlinkInterface`, `minDL`, `minUL`, `maxDL`, and `maxUL`.
+
 [CAKE (Common Applications Kept Enhanced)](https://www.bufferbloat.net/projects/codel/wiki/CakeTechnical/) is a comprehensive smart queue management that is available as a queue discipline (qdisc) for the Linux kernel. It is one of the best qdiscs designed to solve bufferbloat problems at the network edge.
 
 According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-pages/man8/tc-cake.8.html) man7 page, if there is a way to adjust the RTT dynamically in real-time, it should theoretically make CAKE able to give the best possible AQM results between latency and throughput.
@@ -44,7 +48,7 @@ $ go mod tidy
 $ go build
 ```
 
-> :information_source: *Note that:*
+> :information_source: Note that:
 > 1. You have to run `dnscrypt-cake` with `sudo` since it needs to change the linux qdisc, so it needs enough permissions to do that.
 > 2. It's not recommended to change `cakeUplink` and `cakeDownlink` parameters in the `plugin_query_log.go` file, but change cake's settings directly from your terminal.
 
