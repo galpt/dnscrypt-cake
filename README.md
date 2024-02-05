@@ -2,13 +2,13 @@
 
 > :information_source: Note that:
 >
-> The goal of this project is to provide another alternative that *"just works"* for not-so-technical users. Thus, users only need to set these values correctly: `uplinkInterface`, `downlinkInterface`, `minDL`, `minUL`, `maxDL`, and `maxUL`.
+> The goal of this project is to provide another alternative that *"just works"* for not-so-technical users. Thus, users only need to set these values correctly: `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL`.
 
 [CAKE (Common Applications Kept Enhanced)](https://www.bufferbloat.net/projects/codel/wiki/CakeTechnical/) is a comprehensive smart queue management that is available as a queue discipline (qdisc) for the Linux kernel. It is one of the best qdiscs designed to solve bufferbloat problems at the network edge.
 
 According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-pages/man8/tc-cake.8.html) man7 page, if there is a way to adjust the RTT dynamically in real-time, it should theoretically make CAKE able to give the best possible AQM results between latency and throughput.
 
-`dnscrypt-cake` is an attempt to adjust CAKE's `rtt` parameter in real-time based on real latency per DNS request using a slightly modified version of [dnscrypt-proxy 2](https://github.com/DNSCrypt/dnscrypt-proxy). In addition to that, it will also adjust `bandwidth` based on the minimum value you think your network will be bufferbloat-free, and try to increase it continuously from there while constantly monitoring your real RTT.
+`dnscrypt-cake` is an attempt to adjust CAKE's `rtt` parameter in real-time based on real latency per DNS request using a slightly modified version of [dnscrypt-proxy 2](https://github.com/DNSCrypt/dnscrypt-proxy). In addition to that, it will also adjust `bandwidth` intelligently while constantly monitoring your real RTT.
 
 Cloudflare said that [almost everything on the Internet starts with a DNS request](https://developers.cloudflare.com/1.1.1.1/privacy/public-dns-resolver/#:~:text=Nearly%20everything%20on%20the%20Internet%20starts%20with%20a%20DNS%20request), so that's why we made this implementation.
 
@@ -18,7 +18,7 @@ Some of the possible ways we can measure the user's real RTT are by using the fo
 
 We think that adjusting CAKE's `rtt` and `bandwidth` using a DNS server running on the user's machine is a good way to improve the user's network performance as early as possible before the other Internet assets can be loaded.
 
-This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-autorate) project implemented in Go, but this is potentially a better implementation since it's adjusting CAKE's `rtt` and `bandwidth` based on your every DNS request and what website you are visiting, not by only ping-ing to `1.1.1.1`, `8.8.8.8` and/or any other DNS servers.
+This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-autorate) project implemented in Go, but it's adjusting CAKE's `rtt` and `bandwidth` based on your every DNS request and what website you are visiting, not by only ping-ing to `1.1.1.1`, `8.8.8.8` and/or any other DNS servers.
 
 This implementation is suitable for servers and networks where most of the users are actively sending DNS requests.
 
@@ -36,8 +36,7 @@ This implementation is suitable for servers and networks where most of the users
 2. Copy the files from `./dnscrypt-cake/cake-support` to `./dnscrypt-cake/dnscrypt/dnscrypt-proxy`.
 3. Edit the `plugin_query_log.go` file and adjust these values:
    1. `uplinkInterface` and `downlinkInterface` to your network interface names.
-   2. `minDL` and `minUL` to your minimum network bandwidth where you think there won't be any bufferbloat.
-   3. `maxDL` and `maxUL` to your maximum network bandwidth advertised by your ISP (recommended to limit them to 90%).
+   3. `maxDL` and `maxUL` to your maximum network bandwidth advertised by your ISP.
 
 
 4. Then, simply compile the code with the following commands:
