@@ -18,79 +18,46 @@ const (
 	uplinkInterface   = "enp3s0"
 	downlinkInterface = "ifb4enp3s0"
 
-	// adjust "minUL" and "minDL" based on the minimum speed
-	// where you're sure there won't be bufferbloats.
-	// ------
 	// adjust "maxUL" and "maxDL" based on the maximum speed
-	// where you're sure there won't be bufferbloats.
-	// usually they can be 90% of the total advertised speed by ISP.
-	// ------
-	// 2 mbit is small enough for cellular networks.
-	// 1000 mbit for most servers.
-	// values are in mbit.
-	minUL = 2000
-	minDL = 2000
+	// advertised by your ISP.
 	maxUL = 4000
 	maxDL = 4000
+
+	// in nanoseconds
+	internetRTT time.Duration = 100000000
+	oceanicRTT  time.Duration = 300000000
 )
 
+// do not touch
 var (
 
-	// try to adjust cake shaper automatically based on rtt.
-	// values are in mbit.
-	bwUL = 2
-	bwDL = 2
+	// values are in mbit
+	bwUL   = 2
+	bwDL   = 2
+	bwUL5  = 5
+	bwDL5  = 5
+	bwUL10 = 10
+	bwDL10 = 10
+	bwUL30 = 30
+	bwDL30 = 30
+	bwUL50 = 50
+	bwDL50 = 50
+	bwUL70 = 70
+	bwDL70 = 70
+	bwUL90 = 90
+	bwDL90 = 90
 
-	// do not touch.
-	// default to 100ms rtt.
+	// default to 100ms rtt
 	newRTT time.Duration = 100000000 // this is in nanoseconds
 	oldRTT time.Duration = 100000000 // this is in nanoseconds
 )
 
-// function for adjusting cake
-func cake() {
+// functions for adjusting cake
+func cakeBWIncrease() {
 
 	// infinite loop to change cake parameters in real-time
 	for {
 
-		// convert to microseconds
-		newRTT = newRTT / time.Microsecond
-		oldRTT = oldRTT / time.Microsecond
-
-		// check if the real RTT increases (unstable) or not.
-		// if the "newRTT" does increase compared to the "oldRTT",
-		// then reduce cake's bandwidth by n-percent.
-		// after reducing the bandwidth, keep increasing the bandwidth
-		// until it detects an RTT increase from the "newRTT" again,
-		// then repeat the cycle from the start.
-		if newRTT > oldRTT {
-
-			// reduce current bandwidth by 10%
-			bwUL = bwUL - ((bwUL * 10) / 100)
-			bwDL = bwDL - ((bwDL * 10) / 100)
-
-			// if the divided bandwidth is less than minUL/minDL,
-			// set them to minUL & minDL instead.
-			if bwUL < minUL {
-				bwUL = minUL
-			}
-			if bwDL < minDL {
-				bwDL = minDL
-			}
-
-			// if bwUL/bwDL is more than maxUL/maxDL,
-			// set them to maxUL & maxDL instead.
-			if bwUL > maxUL {
-				bwUL = maxUL
-			}
-			if bwDL > maxDL {
-				bwDL = maxDL
-			}
-		}
-
-		// update cake settings based on real world data.
-		// adjust the parameters other than RTT and Bandwidth according to your needs.
-		// ------
 		// set uplink
 		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
 		output, err := cakeUplink.Output()
@@ -111,6 +78,59 @@ func cake() {
 		// keep increasing bandwidth until it detects an RTT increase again.
 		bwUL++
 		bwDL++
+
+	}
+}
+
+func cakeBWRecovery() {
+
+	// calculate bandwidth percentage
+	bwUL5 = ((maxUL * 5) / 100)
+	bwDL5 = ((maxDL * 5) / 100)
+	bwUL10 = ((maxUL * 10) / 100)
+	bwDL10 = ((maxDL * 10) / 100)
+	bwUL30 = ((maxUL * 30) / 100)
+	bwDL30 = ((maxDL * 30) / 100)
+	bwUL50 = ((maxUL * 50) / 100)
+	bwDL50 = ((maxDL * 50) / 100)
+	bwUL70 = ((maxUL * 70) / 100)
+	bwDL70 = ((maxDL * 70) / 100)
+	bwUL90 = ((maxUL * 90) / 100)
+	bwDL90 = ((maxDL * 90) / 100)
+
+	// infinite loop to change cake parameters in real-time
+	for {
+
+		// fast recovery uplink
+		if bwUL >= bwUL10 && bwUL <= bwUL30 {
+			bwUL = bwUL30
+		}
+		if bwUL >= bwUL50 && bwUL <= bwUL70 {
+			bwUL = bwUL70
+		}
+		// fast recovery downlink
+		if bwDL >= bwDL10 && bwDL <= bwDL30 {
+			bwDL = bwDL30
+		}
+		if bwDL >= bwDL50 && bwDL <= bwDL70 {
+			bwDL = bwDL70
+		}
+
+	}
+}
+
+func cakeBWMax() {
+
+	// infinite loop to change cake parameters in real-time
+	for {
+
+		// automatically limit max bandwidth to 90%
+		if bwUL > bwUL90 {
+			bwUL = bwUL90
+		}
+		if bwDL > bwDL90 {
+			bwDL = bwDL90
+		}
 
 	}
 }
@@ -208,6 +228,14 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// save DNS latency as the new RTT for cake
 		newRTT = requestDuration
 
+		// normalize RTT
+		if newRTT < internetRTT {
+			newRTT = internetRTT
+		}
+		if newRTT > oceanicRTT {
+			newRTT = oceanicRTT
+		}
+
 		// convert to microseconds
 		newRTT = newRTT / time.Microsecond
 		oldRTT = oldRTT / time.Microsecond
@@ -220,27 +248,9 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// then repeat the cycle from the start.
 		if newRTT > oldRTT {
 
-			// reduce current bandwidth by 10%
-			bwUL = bwUL - ((bwUL * 10) / 100)
-			bwDL = bwDL - ((bwDL * 10) / 100)
-
-			// if the divided bandwidth is less than minUL/minDL,
-			// set them to minUL & minDL instead.
-			if bwUL < minUL {
-				bwUL = minUL
-			}
-			if bwDL < minDL {
-				bwDL = minDL
-			}
-
-			// if bwUL/bwDL is more than maxUL/maxDL,
-			// set them to maxUL & maxDL instead.
-			if bwUL > maxUL {
-				bwUL = maxUL
-			}
-			if bwDL > maxDL {
-				bwDL = maxDL
-			}
+			// reduce current bandwidth to 5%
+			bwUL = bwUL5
+			bwDL = bwDL5
 		}
 
 		// update cake settings based on real world data.
