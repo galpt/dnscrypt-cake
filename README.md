@@ -36,7 +36,7 @@ This implementation is suitable for servers and networks where most of the users
 2. Copy the files from `./dnscrypt-cake/cake-support` to `./dnscrypt-cake/dnscrypt/dnscrypt-proxy`.
 3. Edit the `plugin_query_log.go` file and adjust these values:
    1. `uplinkInterface` and `downlinkInterface` to your network interface names.
-   3. `maxDL` and `maxUL` to your maximum network bandwidth advertised by your ISP.
+   3. `maxDL` and `maxUL` to your maximum network bandwidth (in Megabit/s) advertised by your ISP.
 
 
 4. Then, simply compile the code with the following commands:
