@@ -41,6 +41,14 @@ There are several things you can expect from using this implementation:
 
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
 
+1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 100ms - 300ms or not.
+If yes, then use that as CAKE's `rtt`, if not then use `rtt 100ms` if it's less than 100ms, and `rtt 300ms` if it's more than 300ms.
+2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 5% of the specified `maxDL` and `maxUL`.
+3. The `cakeBwIncrease()` function will try to increase bandwidth over time, but it can be slow in some situations when the DNS latency varies a lot.
+4. The `cakeBwRecovery()` function will help CAKE recover bandwidth faster to maintain high throughput while trying to get latency under control.
+5. The `cakeBwNormalize()` function will check CAKE's `bandwidth` every 4 seconds. If CAKE failed to recover bandwidth to the specified `maxDL` and `maxUL` during that period, this function will normalize bandwidth to the specified `maxDL` and `maxUL`.
+6. The `cakeBwMax()` function will check in real-time to make sure bandwidth stays at 90% from the specified `maxDL` and `maxUL`.
+
 * * *
 
 ## How to compile the code
