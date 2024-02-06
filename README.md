@@ -24,6 +24,19 @@ This implementation is suitable for servers and networks where most of the users
 
 * * *
 
+## What to expect
+
+There are several things you can expect from using this implementation:
+1. You only need to worry about setting up `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL` correctly.
+2. It will manage `bandwidth` intelligently (do a speedtest via `speedtest-cli` or similar tools to see it in action).
+3. It will manage `rtt` ranging from 100ms - 300ms (this might get improvements in the future).
+
+> :information_source: Note
+>
+> Just set `maxDL` and `maxUL` based on whatever speed advertised by your ISP. No need to limit them to 90% or something like that. The code logic will try to handle that automatically.
+
+* * *
+
 ## How it works
 
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
@@ -48,8 +61,8 @@ $ go build
 ```
 
 > :information_source: Note that:
-> 1. You have to run `dnscrypt-cake` with `sudo` since it needs to change the linux qdisc, so it needs enough permissions to do that.
-> 2. It's not recommended to change `cakeUplink` and `cakeDownlink` parameters in the `plugin_query_log.go` file, but change cake's settings directly from your terminal.
+> 1. You have to run the binary with `sudo` since it needs to change the linux qdisc, so it needs enough permissions to do that.
+> 2. It's not recommended to change `cakeUplink` and `cakeDownlink` parameters in the `plugin_query_log.go` file as they are intended to only handle `bandwidth` and `rtt`. If you need to change CAKE's parameters, change them directly from the terminal.
 
 * * *
 
