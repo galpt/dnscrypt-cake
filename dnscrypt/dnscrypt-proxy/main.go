@@ -28,10 +28,11 @@ type App struct {
 
 func main() {
 
-	// start cake function in a separate goroutine
-	go cakeBWIncrease()
-	go cakeBWRecovery()
-	go cakeBWMax()
+	// start cake functions in separate goroutines
+	go cakeBwIncrease()
+	go cakeBwRecovery()
+	go cakeBwNormalize()
+	go cakeBwMax()
 
 	tzErr := TimezoneSetup()
 	dlog.Init("dnscrypt-proxy", dlog.SeverityNotice, "DAEMON")

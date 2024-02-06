@@ -20,8 +20,8 @@ const (
 
 	// adjust "maxUL" and "maxDL" based on the maximum speed
 	// advertised by your ISP.
-	maxUL = 4000
-	maxDL = 4000
+	maxUL = 5000
+	maxDL = 5000
 
 	// in nanoseconds
 	internetRTT time.Duration = 100000000
@@ -53,7 +53,7 @@ var (
 )
 
 // functions for adjusting cake
-func cakeBWIncrease() {
+func cakeBwIncrease() {
 
 	// infinite loop to change cake parameters in real-time
 	for {
@@ -82,7 +82,7 @@ func cakeBWIncrease() {
 	}
 }
 
-func cakeBWRecovery() {
+func cakeBwRecovery() {
 
 	// calculate bandwidth percentage
 	bwUL5 = ((maxUL * 5) / 100)
@@ -98,30 +98,69 @@ func cakeBWRecovery() {
 	bwUL90 = ((maxUL * 90) / 100)
 	bwDL90 = ((maxDL * 90) / 100)
 
-	// infinite loop to change cake parameters in real-time
 	for {
 
-		// fast recovery uplink
+		// check bandwidthh every second
+		// ------
+		// fast recovery uplink & downlink
 		if bwUL >= bwUL10 && bwUL <= bwUL30 {
-			bwUL = bwUL30
+			bwUL = (bwUL10 + bwUL30) / 2
 		}
-		if bwUL >= bwUL50 && bwUL <= bwUL70 {
-			bwUL = bwUL70
-		}
-		// fast recovery downlink
 		if bwDL >= bwDL10 && bwDL <= bwDL30 {
-			bwDL = bwDL30
+			bwDL = (bwDL10 + bwDL30) / 2
+		}
+
+		time.Sleep(1 * time.Second)
+		if bwUL >= bwUL30 && bwUL <= bwUL50 {
+			bwUL = (bwUL30 + bwUL50) / 2
+		}
+		if bwDL >= bwDL30 && bwDL <= bwDL50 {
+			bwDL = (bwDL30 + bwDL50) / 2
+		}
+
+		time.Sleep(1 * time.Second)
+		if bwUL >= bwUL50 && bwUL <= bwUL70 {
+			bwUL = (bwUL50 + bwUL70) / 2
 		}
 		if bwDL >= bwDL50 && bwDL <= bwDL70 {
-			bwDL = bwDL70
+			bwDL = (bwDL50 + bwDL70) / 2
+		}
+
+		time.Sleep(1 * time.Second)
+		if bwUL >= bwUL70 && bwUL <= bwUL90 {
+			bwUL = (bwUL70 + bwUL90) / 2
+		}
+		if bwDL >= bwDL70 && bwDL <= bwDL90 {
+			bwDL = (bwDL70 + bwDL90) / 2
 		}
 
 	}
 }
 
-func cakeBWMax() {
+func cakeBwNormalize() {
 
 	// infinite loop to change cake parameters in real-time
+	for {
+
+		// in some situations, when DNS latency varies a lot,
+		// it's possible for the logic to fail to recover
+		// the bandwidth to the specified maxDL/maxUL.
+		// because of that, we want to normalize cake's bandwidth
+		// to maxDL/maxUL if it takes longer than 4 seconds to recover.
+		// it should work well with cakeBwRecovery()
+		time.Sleep(4 * time.Second)
+		if bwUL < bwUL90 {
+			bwUL = bwUL90
+		}
+		if bwDL < bwDL90 {
+			bwDL = bwDL90
+		}
+
+	}
+}
+
+func cakeBwMax() {
+
 	for {
 
 		// automatically limit max bandwidth to 90%
