@@ -14,21 +14,29 @@ import (
 )
 
 const (
+
+	// ------
+	// you should adjust these values
+	// ------
 	// adjust them according to your network interface names
 	uplinkInterface   = "enp3s0"
 	downlinkInterface = "ifb4enp3s0"
-
+	// ------
 	// adjust "maxUL" and "maxDL" based on the maximum speed
-	// advertised by your ISP.
-	maxUL = 5000
-	maxDL = 5000
+	// advertised by your ISP (in Kilobit/s format).
+	// 1 Mbit = 1000 kbit.
+	maxUL = 3000000
+	maxDL = 3000000
+	// ------
 
-	// in nanoseconds
+	// do not touch these.
+	// these are in nanoseconds.
 	internetRTT time.Duration = 100000000
 	oceanicRTT  time.Duration = 300000000
 )
 
-// do not touch
+// do not touch these.
+// should be maintained by the functions automatically.
 var (
 
 	// values are in mbit
@@ -59,7 +67,7 @@ func cakeBwIncrease() {
 	for {
 
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dkbit", bwUL))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
@@ -67,7 +75,7 @@ func cakeBwIncrease() {
 			return
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwDL))
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dkbit", bwDL))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
@@ -103,35 +111,29 @@ func cakeBwRecovery() {
 		// check bandwidthh every second
 		// ------
 		// fast recovery uplink & downlink
-		if bwUL >= bwUL10 && bwUL <= bwUL30 {
-			bwUL = (bwUL10 + bwUL30) / 2
-		}
-		if bwDL >= bwDL10 && bwDL <= bwDL30 {
-			bwDL = (bwDL10 + bwDL30) / 2
+		time.Sleep(1 * time.Second)
+		if bwUL < bwUL10 {
+			bwUL = bwUL10
+		} else if bwUL > bwUL10 && bwUL < bwUL30 {
+			bwUL = bwUL30
+		} else if bwUL > bwUL30 && bwUL < bwUL50 {
+			bwUL = bwUL50
+		} else if bwUL > bwUL50 && bwUL < bwUL70 {
+			bwUL = bwUL70
+		} else if bwUL > bwUL70 && bwUL < bwUL90 {
+			bwUL = bwUL90
 		}
 
-		time.Sleep(1 * time.Second)
-		if bwUL >= bwUL30 && bwUL <= bwUL50 {
-			bwUL = (bwUL30 + bwUL50) / 2
-		}
-		if bwDL >= bwDL30 && bwDL <= bwDL50 {
-			bwDL = (bwDL30 + bwDL50) / 2
-		}
-
-		time.Sleep(1 * time.Second)
-		if bwUL >= bwUL50 && bwUL <= bwUL70 {
-			bwUL = (bwUL50 + bwUL70) / 2
-		}
-		if bwDL >= bwDL50 && bwDL <= bwDL70 {
-			bwDL = (bwDL50 + bwDL70) / 2
-		}
-
-		time.Sleep(1 * time.Second)
-		if bwUL >= bwUL70 && bwUL <= bwUL90 {
-			bwUL = (bwUL70 + bwUL90) / 2
-		}
-		if bwDL >= bwDL70 && bwDL <= bwDL90 {
-			bwDL = (bwDL70 + bwDL90) / 2
+		if bwDL < bwDL10 {
+			bwDL = bwDL10
+		} else if bwDL > bwDL10 && bwDL < bwDL30 {
+			bwDL = bwDL30
+		} else if bwDL > bwDL30 && bwDL < bwDL50 {
+			bwDL = bwDL50
+		} else if bwDL > bwDL50 && bwDL < bwDL70 {
+			bwDL = bwDL70
+		} else if bwDL > bwDL70 && bwDL < bwDL90 {
+			bwDL = bwDL90
 		}
 
 	}
@@ -293,10 +295,9 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		}
 
 		// update cake settings based on real world data.
-		// adjust the parameters other than RTT and Bandwidth according to your needs.
 		// ------
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwUL))
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dkbit", bwUL))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
@@ -304,7 +305,7 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 			return errors.New("Failed setting up cakeUplink")
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dmbit", bwDL))
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTT), "bandwidth", fmt.Sprintf("%dkbit", bwDL))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
