@@ -33,6 +33,7 @@ func main() {
 	go cakeBwRecovery()
 	go cakeBwNormalize()
 	go cakeBwMax()
+	go cakeResetRTT()
 
 	tzErr := TimezoneSetup()
 	dlog.Init("dnscrypt-proxy", dlog.SeverityNotice, "DAEMON")

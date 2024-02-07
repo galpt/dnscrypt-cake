@@ -31,8 +31,11 @@ const (
 
 	// do not touch these.
 	// these are in nanoseconds.
-	internetRTT time.Duration = 100000000
-	oceanicRTT  time.Duration = 300000000
+	// 1 ms = 1000000 ns.
+	metroRTT     time.Duration = 10000000
+	internetRTT  time.Duration = 100000000
+	oceanicRTT   time.Duration = 300000000
+	satelliteRTT time.Duration = 1000000000
 )
 
 // do not touch these.
@@ -141,11 +144,10 @@ func cakeBwRecovery() {
 
 func cakeBwNormalize() {
 
-	// infinite loop to change cake parameters in real-time
 	for {
 
 		// in some situations, when DNS latency varies a lot,
-		// it's possible for the logic to fail to recover
+		// it's possible for the bandwidth logic to fail to recover
 		// the bandwidth to the specified maxDL/maxUL.
 		// because of that, we want to normalize cake's bandwidth
 		// to maxDL/maxUL if it takes longer than 4 seconds to recover.
@@ -171,6 +173,26 @@ func cakeBwMax() {
 		}
 		if bwDL > bwDL90 {
 			bwDL = bwDL90
+		}
+
+	}
+}
+
+func cakeResetRTT() {
+
+	for {
+
+		// in some situations, when DNS latency varies a lot,
+		// it's possible that RTT varies a lot too.
+		// this function will reset cake's rtt
+		// back to either "internetRTT" or "oceanicRTT"
+		// every 5 seconds.
+		time.Sleep(5 * time.Second)
+		if newRTT < internetRTT {
+			newRTT = internetRTT
+		}
+		if newRTT > oceanicRTT {
+			newRTT = oceanicRTT
 		}
 
 	}
@@ -270,11 +292,11 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		newRTT = requestDuration
 
 		// normalize RTT
-		if newRTT < internetRTT {
-			newRTT = internetRTT
+		if newRTT < metroRTT {
+			newRTT = metroRTT
 		}
-		if newRTT > oceanicRTT {
-			newRTT = oceanicRTT
+		if newRTT > satelliteRTT {
+			newRTT = satelliteRTT
 		}
 
 		// convert to microseconds
