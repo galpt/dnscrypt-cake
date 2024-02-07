@@ -46,9 +46,9 @@ If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less t
 2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 5% of the specified `maxDL` and `maxUL`.
 3. The `cakeBwIncrease()` function will try to increase bandwidth over time, but it can be slow in some situations when the DNS latency varies a lot.
 4. The `cakeBwRecovery()` function will help CAKE recover bandwidth faster to maintain high throughput while trying to get latency under control.
-5. The `cakeBwNormalize()` function will check CAKE's `bandwidth` every 4 seconds. If CAKE failed to recover bandwidth to the specified `maxDL` and `maxUL` during that period, this function will normalize bandwidth to the specified `maxDL` and `maxUL`.
+5. The `cakeBwNormalize()` function will check CAKE's `bandwidth` every 3 seconds. If CAKE failed to recover bandwidth to the specified `maxDL` and `maxUL` during that period, this function will normalize bandwidth to the specified `maxDL` and `maxUL`.
 6. The `cakeBwMax()` function will check in real-time to make sure bandwidth stays at 90% from the specified `maxDL` and `maxUL`.
-7. The `cakeResetRTT()` function will check the RTT every 5 seconds and reset CAKE's `rtt` to either 100ms or 300ms.
+7. The `cakeResetRTT()` function will check the RTT every 2 seconds and reset CAKE's `rtt` to either 100ms or 300ms.
 
 * * *
 
