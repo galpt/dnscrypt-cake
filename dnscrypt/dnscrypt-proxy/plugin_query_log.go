@@ -63,36 +63,7 @@ var (
 )
 
 // functions for adjusting cake
-func cakeBwIncrease() {
-
-	// infinite loop to change cake parameters in real-time
-	for {
-
-		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL))
-		output, err := cakeUplink.Output()
-
-		if err != nil {
-			fmt.Println(err.Error() + ": " + string(output))
-			return
-		}
-		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL))
-		output, err = cakeDownlink.Output()
-
-		if err != nil {
-			fmt.Println(err.Error() + ": " + string(output))
-			return
-		}
-
-		// keep increasing bandwidth until it detects an RTT increase again
-		bwUL++
-		bwDL++
-
-	}
-}
-
-func cakeBwRecovery() {
+func cake() {
 
 	// calculate bandwidth percentage
 	bwUL10 = ((maxUL * 10) / 100)
@@ -106,10 +77,19 @@ func cakeBwRecovery() {
 	bwUL90 = ((maxUL * 90) / 100)
 	bwDL90 = ((maxDL * 90) / 100)
 
+	// infinite loop to change cake parameters in real-time
 	for {
 
+		// automatically limit max bandwidth to 90%
+		if bwUL > bwUL90 {
+			bwUL = bwUL90
+		}
+		if bwDL > bwDL90 {
+			bwDL = bwDL90
+		}
+
 		// fast recovery uplink & downlink
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		if bwUL < bwUL10 {
 			bwUL = bwUL10
 		} else if bwUL > bwUL10 && bwUL < bwUL30 {
@@ -134,62 +114,26 @@ func cakeBwRecovery() {
 			bwDL = bwDL90
 		}
 
-	}
-}
+		// set uplink
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL))
+		output, err := cakeUplink.Output()
 
-func cakeBwNormalize() {
-
-	for {
-
-		// in some situations, when DNS latency varies a lot,
-		// it's possible for the bandwidth logic to fail to recover
-		// the bandwidth to the specified maxDL/maxUL.
-		// because of that, we want to normalize cake's bandwidth
-		// to maxDL/maxUL if it takes longer than 5 seconds to recover.
-		// it should work well with cakeBwRecovery().
-		time.Sleep(5 * time.Second)
-
-		if bwUL < bwUL90 {
-			bwUL = bwUL90
+		if err != nil {
+			fmt.Println(err.Error() + ": " + string(output))
+			return
 		}
-		if bwDL < bwDL90 {
-			bwDL = bwDL90
+		// set downlink
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL))
+		output, err = cakeDownlink.Output()
+
+		if err != nil {
+			fmt.Println(err.Error() + ": " + string(output))
+			return
 		}
 
-	}
-}
-
-func cakeBwMax() {
-
-	for {
-
-		// automatically limit max bandwidth to 90%
-		if bwUL > bwUL90 {
-			bwUL = bwUL90
-		}
-		if bwDL > bwDL90 {
-			bwDL = bwDL90
-		}
-
-	}
-}
-
-func cakeResetRTT() {
-
-	for {
-
-		// in some situations, when DNS latency varies a lot,
-		// it's possible that RTT varies a lot too.
-		// this function will reset cake's rtt
-		// back to either "internetRTT" or "oceanicRTT"
-		// every 3 seconds.
-		time.Sleep(3 * time.Second)
-		if newRTT < internetRTT {
-			newRTT = internetRTT
-		}
-		if newRTT > oceanicRTT {
-			newRTT = oceanicRTT
-		}
+		// keep increasing bandwidth until it detects an RTT increase again
+		bwUL++
+		bwDL++
 
 	}
 }
@@ -302,9 +246,9 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// until it detects an RTT increase from the "newRTT" again,
 		// then repeat the cycle from the start.
 		if newRTT > oldRTT {
-			// reduce current bandwidth by 1/8 of the current bandwidth
-			bwUL = bwUL - (bwUL / 8)
-			bwDL = bwDL - (bwDL / 8)
+			// reduce current bandwidth to 10% of maxUL/maxDL.
+			bwUL = bwUL10
+			bwDL = bwDL10
 		}
 
 		// convert to microseconds
