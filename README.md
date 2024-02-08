@@ -29,7 +29,7 @@ This implementation is suitable for servers and networks where most of the users
 There are several things you can expect from using this implementation:
 1. You only need to worry about setting up `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL` correctly.
 2. It will manage `bandwidth` intelligently (do a speedtest via `speedtest-cli` or similar tools to see it in action).
-3. It will manage `rtt` ranging from 100ms - 1000ms.
+3. It will manage `rtt` ranging from 10ms - 1000ms (this might get improvements in the future).
 
 > :information_source: Note
 >
@@ -41,8 +41,8 @@ There are several things you can expect from using this implementation:
 
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
 
-1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 100ms - 1000ms or not.
-If yes, then use that as CAKE's `rtt`, if not then use `rtt 100ms` if it's less than 100ms, and `rtt 1000ms` if it's more than 1000ms.
+1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 10ms - 1000ms or not.
+If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less than 10ms, and `rtt 1000ms` if it's more than 1000ms.
 2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 5% of the specified `maxDL` and `maxUL`.
 3. The `cakeBwIncrease()` function will try to increase bandwidth over time, but it can be slow in some situations when the DNS latency varies a lot.
 4. The `cakeBwRecovery()` function will help CAKE recover bandwidth faster to maintain high throughput while trying to get latency under control.
