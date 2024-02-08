@@ -42,8 +42,6 @@ const (
 // do not touch these.
 // should be maintained by the functions automatically.
 var (
-
-	// values are in mbit
 	bwUL   = 2
 	bwDL   = 2
 	bwUL5  = 5
@@ -59,10 +57,11 @@ var (
 	bwUL90 = 90
 	bwDL90 = 90
 
-	// default to 100ms rtt
+	// default to 100ms rtt.
+	// in Go, "time.Duration" defaults to nanoseconds.
 	newRTT   time.Duration = 100000000 // this is in nanoseconds
 	oldRTT   time.Duration = 100000000 // this is in nanoseconds
-	newRTTus time.Duration = 100000    // this is in microseconds
+	newRTTus time.Duration = 100000    // this will be in microseconds
 )
 
 // functions for adjusting cake
@@ -88,7 +87,7 @@ func cakeBwIncrease() {
 			return
 		}
 
-		// keep increasing bandwidth until it detects an RTT increase again.
+		// keep increasing bandwidth until it detects an RTT increase again
 		bwUL++
 		bwDL++
 
@@ -113,8 +112,6 @@ func cakeBwRecovery() {
 
 	for {
 
-		// check bandwidthh every second
-		// ------
 		// fast recovery uplink & downlink
 		time.Sleep(200 * time.Millisecond)
 		if bwUL < bwUL10 {
@@ -153,7 +150,7 @@ func cakeBwNormalize() {
 		// the bandwidth to the specified maxDL/maxUL.
 		// because of that, we want to normalize cake's bandwidth
 		// to maxDL/maxUL if it takes longer than 5 seconds to recover.
-		// it should work well with cakeBwRecovery()
+		// it should work well with cakeBwRecovery().
 		time.Sleep(5 * time.Second)
 
 		if bwUL < bwUL90 {
@@ -189,7 +186,7 @@ func cakeResetRTT() {
 		// it's possible that RTT varies a lot too.
 		// this function will reset cake's rtt
 		// back to either "internetRTT" or "oceanicRTT"
-		// every 3 second.
+		// every 3 seconds.
 		time.Sleep(3 * time.Second)
 		if newRTT < internetRTT {
 			newRTT = internetRTT
