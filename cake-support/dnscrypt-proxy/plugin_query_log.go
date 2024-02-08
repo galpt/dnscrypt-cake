@@ -116,6 +116,7 @@ func cakeBwRecovery() {
 		// check bandwidthh every second
 		// ------
 		// fast recovery uplink & downlink
+		time.Sleep(200 * time.Millisecond)
 		if bwUL < bwUL10 {
 			bwUL = bwUL10
 		} else if bwUL > bwUL10 && bwUL < bwUL30 {
@@ -151,9 +152,9 @@ func cakeBwNormalize() {
 		// it's possible for the bandwidth logic to fail to recover
 		// the bandwidth to the specified maxDL/maxUL.
 		// because of that, we want to normalize cake's bandwidth
-		// to maxDL/maxUL if it takes longer than 3 seconds to recover.
+		// to maxDL/maxUL if it takes longer than 5 seconds to recover.
 		// it should work well with cakeBwRecovery()
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		if bwUL < bwUL90 {
 			bwUL = bwUL90
@@ -294,8 +295,8 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		newRTT = requestDuration
 
 		// normalize RTT
-		if newRTT < metroRTT {
-			newRTT = metroRTT
+		if newRTT < internetRTT {
+			newRTT = internetRTT
 		}
 		if newRTT > satelliteRTT {
 			newRTT = satelliteRTT
