@@ -44,8 +44,6 @@ const (
 var (
 	bwUL   = 2
 	bwDL   = 2
-	bwUL5  = 5
-	bwDL5  = 5
 	bwUL10 = 10
 	bwDL10 = 10
 	bwUL30 = 30
@@ -97,8 +95,6 @@ func cakeBwIncrease() {
 func cakeBwRecovery() {
 
 	// calculate bandwidth percentage
-	bwUL5 = ((maxUL * 5) / 100)
-	bwDL5 = ((maxDL * 5) / 100)
 	bwUL10 = ((maxUL * 10) / 100)
 	bwDL10 = ((maxDL * 10) / 100)
 	bwUL30 = ((maxUL * 30) / 100)
@@ -113,7 +109,7 @@ func cakeBwRecovery() {
 	for {
 
 		// fast recovery uplink & downlink
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		if bwUL < bwUL10 {
 			bwUL = bwUL10
 		} else if bwUL > bwUL10 && bwUL < bwUL30 {
@@ -306,9 +302,9 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// until it detects an RTT increase from the "newRTT" again,
 		// then repeat the cycle from the start.
 		if newRTT > oldRTT {
-			// reduce current bandwidth to 5%
-			bwUL = bwUL5
-			bwDL = bwDL5
+			// reduce current bandwidth by 1/8 of the current bandwidth
+			bwUL = bwUL - (bwUL / 8)
+			bwDL = bwDL - (bwDL / 8)
 		}
 
 		// convert to microseconds
