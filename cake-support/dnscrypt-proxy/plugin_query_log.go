@@ -211,18 +211,9 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 
 		// check if the real RTT increases (unstable) or not.
 		if newRTT > oldRTT {
-			// halving bandwidth each time an RTT increase is detected
-			bwUL = bwUL / 2
-			bwDL = bwDL / 2
 
-			// bandwidth shouldn't be too small
-			// to prevent the network from becoming sluggish.
-			if bwUL < Mbit {
-				bwUL = Mbit
-			}
-			if bwDL < Mbit {
-				bwDL = Mbit
-			}
+			bwUL = Mbit
+			bwDL = Mbit
 
 			// use autoSplitGSO
 			if bwUL < Gbit {

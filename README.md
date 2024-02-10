@@ -37,8 +37,8 @@ There are several things you can expect from using this implementation:
 
 1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 30ms - 1000ms or not.
 If yes, then use that as CAKE's `rtt`, if not then use `rtt 30ms` if it's less than 100ms, and `rtt 1000ms` if it's more than 1000ms.
-2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` by 50%.
-3. The `cake()` function will try to handle `bandwidth` and `rtt` automatically over time.
+2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 1 Mbit/s.
+3. The `cake()` function will try to handle `bandwidth`, `rtt`, and `split-gso` in milliseconds.
 
 * * *
 
