@@ -10,14 +10,6 @@ According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-
 
 `dnscrypt-cake` is an attempt to adjust CAKE's `rtt` parameter in real-time based on real latency per DNS request using a slightly modified version of [dnscrypt-proxy 2](https://github.com/DNSCrypt/dnscrypt-proxy). In addition to that, it will also adjust `bandwidth` intelligently while constantly monitoring your real RTT.
 
-Cloudflare said that [almost everything on the Internet starts with a DNS request](https://developers.cloudflare.com/1.1.1.1/privacy/public-dns-resolver/#:~:text=Nearly%20everything%20on%20the%20Internet%20starts%20with%20a%20DNS%20request), so that's why we made this implementation.
-
-Some of the possible ways we can measure the user's real RTT are by using the following methods:
-1. a transparent proxy (some kind of HTTP CONNECT proxy or something like that).
-2. a DNS proxy server (this is probably the easiest way these days).
-
-We think that adjusting CAKE's `rtt` and `bandwidth` using a DNS server running on the user's machine is a good way to improve the user's network performance as early as possible before the other Internet assets can be loaded.
-
 This is an adaptation of the [cake-autorate](https://github.com/lynxthecat/cake-autorate) project implemented in Go, but it's adjusting CAKE's `rtt` and `bandwidth` based on your every DNS request and what website you are visiting, not by only ping-ing to `1.1.1.1`, `8.8.8.8` and/or any other DNS servers.
 
 This implementation is suitable for servers and networks where most of the users are actively sending DNS requests.
@@ -28,8 +20,10 @@ This implementation is suitable for servers and networks where most of the users
 
 There are several things you can expect from using this implementation:
 1. You only need to worry about setting up `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL` correctly.
-2. It will manage `bandwidth` intelligently (do a speedtest via `speedtest-cli` or similar tools to see it in action).
-3. It will manage `rtt` ranging from 100ms - 1000ms.
+2. It will manage `bandwidth` intelligently (do a speedtest using [Speedtest CLI](https://www.speedtest.net/apps/cli) or similar tools to see it in action).
+3. It will manage `rtt` ranging from 30ms - 1000ms.
+4. It will manage `split-gso` automatically.
+5. Designed to be scalable. It is able to manage CAKE's `bandwidth` from 1 Mbit/s to 1 Gbit/s (or even more) in seconds.
 
 > :information_source: Note
 >
@@ -41,9 +35,9 @@ There are several things you can expect from using this implementation:
 
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
 
-1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 100ms - 1000ms or not.
-If yes, then use that as CAKE's `rtt`, if not then use `rtt 100ms` if it's less than 100ms, and `rtt 1000ms` if it's more than 1000ms.
-2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 10% from the specified `maxDL` and `maxUL`.
+1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 30ms - 1000ms or not.
+If yes, then use that as CAKE's `rtt`, if not then use `rtt 30ms` if it's less than 100ms, and `rtt 1000ms` if it's more than 1000ms.
+2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` by 50%.
 3. The `cake()` function will try to handle `bandwidth` and `rtt` automatically over time.
 
 * * *

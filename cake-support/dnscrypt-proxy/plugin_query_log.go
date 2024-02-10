@@ -25,8 +25,8 @@ const (
 	// adjust "maxUL" and "maxDL" based on the maximum speed
 	// advertised by your ISP (in Kilobit/s format).
 	// 1 Mbit = 1000 kbit.
-	maxUL = 3000000
-	maxDL = 3000000
+	maxUL = 4000000
+	maxDL = 4000000
 	// ------
 
 	// do not touch these.
@@ -34,9 +34,13 @@ const (
 	// 1 ms = 1000000 ns.
 	// 1 ms = 1000 us.
 	metroRTT     time.Duration = 10000000
+	regionalRTT  time.Duration = 30000000
 	internetRTT  time.Duration = 100000000
 	oceanicRTT   time.Duration = 300000000
 	satelliteRTT time.Duration = 1000000000
+	// ------
+	Mbit = 1000    // 1 Mbit
+	Gbit = 1000000 // 1 Gbit
 )
 
 // do not touch these.
@@ -44,14 +48,6 @@ const (
 var (
 	bwUL   = 2
 	bwDL   = 2
-	bwUL10 = 10
-	bwDL10 = 10
-	bwUL30 = 30
-	bwDL30 = 30
-	bwUL50 = 50
-	bwDL50 = 50
-	bwUL70 = 70
-	bwDL70 = 70
 	bwUL90 = 90
 	bwDL90 = 90
 
@@ -60,25 +56,25 @@ var (
 	newRTT   time.Duration = 100000000 // this is in nanoseconds
 	oldRTT   time.Duration = 100000000 // this is in nanoseconds
 	newRTTus time.Duration = 100000    // this will be in microseconds
+
+	// decide whether split-gso should be used or not.
+	autoSplitGSO = "split-gso"
 )
 
 // functions for adjusting cake
 func cake() {
 
 	// calculate bandwidth percentage
-	bwUL10 = ((maxUL * 10) / 100)
-	bwDL10 = ((maxDL * 10) / 100)
-	bwUL30 = ((maxUL * 30) / 100)
-	bwDL30 = ((maxDL * 30) / 100)
-	bwUL50 = ((maxUL * 50) / 100)
-	bwDL50 = ((maxDL * 50) / 100)
-	bwUL70 = ((maxUL * 70) / 100)
-	bwDL70 = ((maxDL * 70) / 100)
 	bwUL90 = ((maxUL * 90) / 100)
 	bwDL90 = ((maxDL * 90) / 100)
 
 	// infinite loop to change cake parameters in real-time
 	for {
+
+		// fast recovery uplink & downlink
+		time.Sleep(100 * time.Millisecond)
+		bwUL = bwUL * 2
+		bwDL = bwDL * 2
 
 		// automatically limit max bandwidth to 90%
 		if bwUL > bwUL90 {
@@ -88,34 +84,20 @@ func cake() {
 			bwDL = bwDL90
 		}
 
-		// fast recovery uplink & downlink
-		time.Sleep(100 * time.Millisecond)
-		if bwUL < bwUL10 {
-			bwUL = bwUL10
-		} else if bwUL > bwUL10 && bwUL < bwUL30 {
-			bwUL = bwUL30
-		} else if bwUL > bwUL30 && bwUL < bwUL50 {
-			bwUL = bwUL50
-		} else if bwUL > bwUL50 && bwUL < bwUL70 {
-			bwUL = bwUL70
-		} else if bwUL > bwUL70 && bwUL < bwUL90 {
-			bwUL = bwUL90
+		// use autoSplitGSO
+		if bwUL < Gbit {
+			autoSplitGSO = "split-gso"
+		} else if bwUL > Gbit {
+			autoSplitGSO = "no-split-gso"
 		}
-
-		if bwDL < bwDL10 {
-			bwDL = bwDL10
-		} else if bwDL > bwDL10 && bwDL < bwDL30 {
-			bwDL = bwDL30
-		} else if bwDL > bwDL30 && bwDL < bwDL50 {
-			bwDL = bwDL50
-		} else if bwDL > bwDL50 && bwDL < bwDL70 {
-			bwDL = bwDL70
-		} else if bwDL > bwDL70 && bwDL < bwDL90 {
-			bwDL = bwDL90
+		if bwDL < Gbit {
+			autoSplitGSO = "split-gso"
+		} else if bwDL > Gbit {
+			autoSplitGSO = "no-split-gso"
 		}
 
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL))
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
@@ -123,17 +105,13 @@ func cake() {
 			return
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL))
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
 			fmt.Println(err.Error() + ": " + string(output))
 			return
 		}
-
-		// keep increasing bandwidth until it detects an RTT increase again
-		bwUL++
-		bwDL++
 
 	}
 }
@@ -231,24 +209,40 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// save DNS latency as the new RTT for cake
 		newRTT = requestDuration
 
+		// check if the real RTT increases (unstable) or not.
+		if newRTT > oldRTT {
+			// halving bandwidth each time an RTT increase is detected
+			bwUL = bwUL / 2
+			bwDL = bwDL / 2
+
+			// bandwidth shouldn't be too small
+			// to prevent the network from becoming sluggish.
+			if bwUL < Mbit {
+				bwUL = Mbit
+			}
+			if bwDL < Mbit {
+				bwDL = Mbit
+			}
+
+			// use autoSplitGSO
+			if bwUL < Gbit {
+				autoSplitGSO = "split-gso"
+			} else if bwUL > Gbit {
+				autoSplitGSO = "no-split-gso"
+			}
+			if bwDL < Gbit {
+				autoSplitGSO = "split-gso"
+			} else if bwDL > Gbit {
+				autoSplitGSO = "no-split-gso"
+			}
+		}
+
 		// normalize RTT
-		if newRTT < internetRTT {
-			newRTT = internetRTT
+		if newRTT < regionalRTT {
+			newRTT = regionalRTT
 		}
 		if newRTT > satelliteRTT {
 			newRTT = satelliteRTT
-		}
-
-		// check if the real RTT increases (unstable) or not.
-		// if the "newRTT" does increase compared to the "oldRTT",
-		// then reduce cake's bandwidth by n-percent.
-		// after reducing the bandwidth, keep increasing the bandwidth
-		// until it detects an RTT increase from the "newRTT" again,
-		// then repeat the cycle from the start.
-		if newRTT > oldRTT {
-			// reduce current bandwidth to 10% of maxUL/maxDL.
-			bwUL = bwUL10
-			bwDL = bwDL10
 		}
 
 		// convert to microseconds
@@ -257,7 +251,7 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// update cake settings based on real world data.
 		// ------
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL))
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
@@ -265,7 +259,7 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 			return errors.New("Failed setting up cakeUplink")
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL))
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
