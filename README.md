@@ -23,7 +23,7 @@ There are several things you can expect from using this implementation:
 2. It will manage `bandwidth` intelligently (do a speedtest using [Speedtest CLI](https://www.speedtest.net/apps/cli) or similar tools to see it in action).
 3. It will manage `rtt` ranging from 30ms - 1000ms.
 4. It will manage `split-gso` automatically.
-5. Designed to be scalable. It is able to manage CAKE's `bandwidth` from 1 Mbit/s to 1 Gbit/s (or even more) in seconds.
+5. It is able to scale CAKE's `bandwidth` from 1 Mbit/s to 1 Gbit/s (or even more) in seconds.
 
 > :information_source: Note
 >
@@ -36,7 +36,7 @@ There are several things you can expect from using this implementation:
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
 
 1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 30ms - 1000ms or not.
-If yes, then use that as CAKE's `rtt`, if not then use `rtt 30ms` if it's less than 100ms, and `rtt 1000ms` if it's more than 1000ms.
+If yes, then use that as CAKE's `rtt`, if not then use `rtt 30ms` if it's less than 30ms, and `rtt 1000ms` if it's more than 1000ms.
 2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 1 Mbit/s.
 3. The `cake()` function will try to handle `bandwidth`, `rtt`, and `split-gso` in milliseconds.
 
