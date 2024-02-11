@@ -41,10 +41,10 @@ Below are the CC algorithms that we have tested and worked well with `dnscrypt-c
 2. `cubic` — The [CUBIC](https://en.wikipedia.org/wiki/CUBIC_TCP) TCP CC
 3. `scalable` — The [Scalable](https://en.wikipedia.org/wiki/Scalable_TCP) TCP CC
 4. `dctcp` — The [DCTCP](https://datatracker.ietf.org/doc/html/rfc8257) TCP CC
-5. `htcp` - The [H-TCP](https://en.wikipedia.org/wiki/H-TCP) TCP CC
-6. `highspeed` - The [High Speed](https://en.wikipedia.org/wiki/HSTCP) TCP CC
-7. `yeah` - The [YeAH](https://www.gdt.id.au/~gdt/presentations/2010-07-06-questnet-tcp/reference-materials/papers/baiocchi+castellani+vacirca-yeah-tcp-yet-another-highspeed-tcp.pdf) TCP CC
-8. `bbr` - The [BBR](https://github.com/google/bbr) TCP CC (tested both old and v3)
+5. `htcp` — The [H-TCP](https://en.wikipedia.org/wiki/H-TCP) TCP CC
+6. `highspeed` — The [High Speed](https://en.wikipedia.org/wiki/HSTCP) TCP CC
+7. `yeah` — The [YeAH](https://www.gdt.id.au/~gdt/presentations/2010-07-06-questnet-tcp/reference-materials/papers/baiocchi+castellani+vacirca-yeah-tcp-yet-another-highspeed-tcp.pdf) TCP CC
+8. `bbr` — The [BBR](https://github.com/google/bbr) TCP CC (tested both old and v3)
 
 > :warning: Note that:
 >
