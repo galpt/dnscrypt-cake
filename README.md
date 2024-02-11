@@ -31,6 +31,28 @@ There are several things you can expect from using this implementation:
 
 * * *
 
+## Congestion Control Consideration
+
+You may want to consider what TCP CC algorithm to use that works best for your workloads.
+Different CC handles congestion differently, and that will affect how fast `dnscrypt-cake` is able to restore the configured bandwidth when a latency increase is detected.
+
+Below are the CC algorithms that we have tested and worked well with `dnscrypt-cake` in a server environment:
+1. `reno` — The Reno TCP CC
+2. `cubic` — The [CUBIC](https://en.wikipedia.org/wiki/CUBIC_TCP) TCP CC
+3. `scalable` — The [Scalable](https://en.wikipedia.org/wiki/Scalable_TCP) TCP CC
+4. `dctcp` — The [DCTCP](https://datatracker.ietf.org/doc/html/rfc8257) TCP CC
+5. `htcp` - The [H-TCP](https://en.wikipedia.org/wiki/H-TCP) TCP CC
+6. `highspeed` - The [High Speed](https://en.wikipedia.org/wiki/HSTCP) TCP CC
+7. `yeah` - The [YeAH](https://www.gdt.id.au/~gdt/presentations/2010-07-06-questnet-tcp/reference-materials/papers/baiocchi+castellani+vacirca-yeah-tcp-yet-another-highspeed-tcp.pdf) TCP CC
+8. `bbr` - The [BBR](https://github.com/google/bbr) TCP CC (tested both old and v3)
+
+> :warning: Note that:
+>
+> 1. `dctcp` must not be deployed over the public Internet without additional measures.
+> 2. Using `bbr` might cause issues such as frequent captchas on some websites or any other issues. This [article](https://blog.apnic.net/2020/01/10/when-to-use-and-not-use-bbr/) by APNIC can give you some references on when you may want to use it.
+
+* * *
+
 ## How it works
 
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
