@@ -4,6 +4,20 @@
 >
 > The goal of this project is to provide another alternative that *"just works"* for not-so-technical users. Thus, users only need to set these values correctly: `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL`.
 
+## Table of Contents
+
+1. [About](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#about)
+2. [What to expect](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#what-to-expect)
+3. [Congestion Control Consideration](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#congestion-control-consideration)
+4. [How it works](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#how-it-works)
+5. [How to compile the code](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#how-to-compile-the-code)
+6. [See dnscrypt-cake in action](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#see-dnscrypt-cake-in-action)
+7. [Credits](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#credits)
+
+* * *
+
+## About
+
 [CAKE (Common Applications Kept Enhanced)](https://www.bufferbloat.net/projects/codel/wiki/CakeTechnical/) is a comprehensive smart queue management that is available as a queue discipline (qdisc) for the Linux kernel. It is one of the best qdiscs designed to solve bufferbloat problems at the network edge.
 
 According to the CAKE's [ROUND TRIP TIME PARAMETERS](https://man7.org/linux/man-pages/man8/tc-cake.8.html) man7 page, if there is a way to adjust the RTT dynamically in real-time, it should theoretically make CAKE able to give the best possible AQM results between latency and throughput.
