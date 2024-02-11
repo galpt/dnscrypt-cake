@@ -17,6 +17,7 @@
 * * *
 
 ## About
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 [CAKE (Common Applications Kept Enhanced)](https://www.bufferbloat.net/projects/codel/wiki/CakeTechnical/) is a comprehensive smart queue management that is available as a queue discipline (qdisc) for the Linux kernel. It is one of the best qdiscs designed to solve bufferbloat problems at the network edge.
 
@@ -31,6 +32,7 @@ This implementation is suitable for servers and networks where most of the users
 * * *
 
 ## What to expect
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 There are several things you can expect from using this implementation:
 1. You only need to worry about setting up `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL` correctly.
@@ -46,6 +48,7 @@ There are several things you can expect from using this implementation:
 * * *
 
 ## Congestion Control Consideration
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 You may want to consider what TCP CC algorithm to use that works best for your workloads.
 Different CC handles congestion differently, and that will affect how fast `dnscrypt-cake` is able to restore the configured bandwidth when a latency increase is detected.
@@ -68,6 +71,7 @@ Below are the CC algorithms that we have tested and worked well with `dnscrypt-c
 * * *
 
 ## How it works
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 ![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
 
@@ -79,6 +83,7 @@ If yes, then use that as CAKE's `rtt`, if not then use `rtt 30ms` if it's less t
 * * *
 
 ## How to compile the code
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 1. Download and install [The Go Programming Language](https://go.dev/).
 2. Copy the files from `./dnscrypt-cake/cake-support` to `./dnscrypt-cake/dnscrypt/dnscrypt-proxy`.
@@ -102,6 +107,7 @@ $ go build
 * * *
 
 ## See `dnscrypt-cake` in action
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 We are testing `dnscrypt-cake` in our server here:
 
@@ -120,6 +126,7 @@ This server is being used as our testing environment as well as a speedtest serv
 * * *
 
 ## Credits
+#### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
 Although we are writing this guide to let people know about our implementation, it was made possible by using other things provided by the developers and/or companies mentioned in this guide.
 
