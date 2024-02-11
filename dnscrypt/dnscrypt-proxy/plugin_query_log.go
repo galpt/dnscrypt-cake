@@ -48,6 +48,8 @@ const (
 var (
 	bwUL   = 2
 	bwDL   = 2
+	bwUL1  = 1
+	bwDL1  = 1
 	bwUL90 = 90
 	bwDL90 = 90
 
@@ -59,22 +61,49 @@ var (
 
 	// decide whether split-gso should be used or not.
 	autoSplitGSO = "split-gso"
+
+	// bufferbloat state
+	bufferbloatState      = false
+	bufferbloatStateCount = 0
 )
 
 // functions for adjusting cake
 func cake() {
 
 	// calculate bandwidth percentage
+	bwUL1 = ((maxUL * 1) / 100)
+	bwDL1 = ((maxDL * 1) / 100)
 	bwUL90 = ((maxUL * 90) / 100)
 	bwDL90 = ((maxDL * 90) / 100)
 
 	// infinite loop to change cake parameters in real-time
 	for {
 
-		// fast recovery uplink & downlink
 		time.Sleep(100 * time.Millisecond)
-		bwUL = bwUL * 2
-		bwDL = bwDL * 2
+
+		// handle bufferbloat state
+		if bufferbloatState {
+
+			// a check for connections slower than 1 Mbit/s
+			// (i.e. data cellular ISPs with Fair Usage Policy).
+			if bwUL1 < Mbit || bwDL1 < Mbit {
+				bwUL = bwUL1
+				bwDL = bwDL1
+			} else if bwUL1 > Mbit || bwDL1 > Mbit {
+				bwUL = Mbit
+				bwDL = Mbit
+			}
+
+			bufferbloatStateCount++
+			if bufferbloatStateCount >= 5 {
+				bufferbloatStateCount = 0
+				bufferbloatState = false
+			}
+		} else if !bufferbloatState {
+			// fast recovery uplink & downlink
+			bwUL = bwUL * 2
+			bwDL = bwDL * 2
+		}
 
 		// automatically limit max bandwidth to 90%
 		if bwUL > bwUL90 {
@@ -85,14 +114,9 @@ func cake() {
 		}
 
 		// use autoSplitGSO
-		if bwUL < Gbit {
+		if bwUL < Gbit || bwDL < Gbit {
 			autoSplitGSO = "split-gso"
-		} else if bwUL > Gbit {
-			autoSplitGSO = "no-split-gso"
-		}
-		if bwDL < Gbit {
-			autoSplitGSO = "split-gso"
-		} else if bwDL > Gbit {
+		} else if bwUL > Gbit || bwDL > Gbit {
 			autoSplitGSO = "no-split-gso"
 		}
 
@@ -212,20 +236,25 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// check if the real RTT increases (unstable) or not.
 		if newRTT > oldRTT {
 
-			bwUL = Mbit
-			bwDL = Mbit
+			// a check for connections slower than 1 Mbit/s
+			// (i.e. data cellular ISPs with Fair Usage Policy).
+			if bwUL1 < Mbit || bwDL1 < Mbit {
+				bwUL = bwUL1
+				bwDL = bwDL1
+			} else if bwUL1 > Mbit || bwDL1 > Mbit {
+				bwUL = Mbit
+				bwDL = Mbit
+			}
 
 			// use autoSplitGSO
-			if bwUL < Gbit {
+			if bwUL < Gbit || bwDL < Gbit {
 				autoSplitGSO = "split-gso"
-			} else if bwUL > Gbit {
+			} else if bwUL > Gbit || bwDL > Gbit {
 				autoSplitGSO = "no-split-gso"
 			}
-			if bwDL < Gbit {
-				autoSplitGSO = "split-gso"
-			} else if bwDL > Gbit {
-				autoSplitGSO = "no-split-gso"
-			}
+
+			bufferbloatState = true
+
 		}
 
 		// normalize RTT
