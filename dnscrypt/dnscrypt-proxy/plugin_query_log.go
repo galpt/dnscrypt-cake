@@ -258,8 +258,8 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		}
 
 		// normalize RTT
-		if newRTT < regionalRTT {
-			newRTT = regionalRTT
+		if newRTT < internetRTT {
+			newRTT = internetRTT
 		}
 		if newRTT > satelliteRTT {
 			newRTT = satelliteRTT
