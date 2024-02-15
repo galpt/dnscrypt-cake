@@ -1,6 +1,6 @@
 # dnscrypt-cake
 
-> :information_source: Note that:
+> [!NOTE]
 >
 > The goal of this project is to provide another alternative that *"just works"* for not-so-technical users. Thus, users only need to set these values correctly: `uplinkInterface`, `downlinkInterface`, `maxDL`, and `maxUL`.
 
@@ -41,7 +41,7 @@ There are several things you can expect from using this implementation:
 4. It will manage `split-gso` automatically.
 5. It is able to scale CAKE's `bandwidth` from 1 Mbit/s to 1 Gbit/s (or even more) in seconds.
 
-> :information_source: Note
+> [!NOTE]
 >
 > Just set `maxDL` and `maxUL` based on whatever speed advertised by your ISP. No need to limit them to 90% or something like that. The code logic will try to handle that automatically.
 
@@ -63,7 +63,7 @@ Below are the CC algorithms that we have tested and worked well with `dnscrypt-c
 7. `yeah` — The [YeAH](https://www.gdt.id.au/~gdt/presentations/2010-07-06-questnet-tcp/reference-materials/papers/baiocchi+castellani+vacirca-yeah-tcp-yet-another-highspeed-tcp.pdf) TCP CC
 8. `bbr` — The [BBR](https://github.com/google/bbr) TCP CC (tested both old and v3)
 
-> :warning: Note that:
+> [!IMPORTANT]
 >
 > 1. `dctcp` must not be deployed over the public Internet without additional measures.
 > 2. Using `bbr` might cause issues such as frequent captchas on some websites or any other issues. This [article](https://blog.apnic.net/2020/01/10/when-to-use-and-not-use-bbr/) by APNIC can give you some references on when you may want to use it.
@@ -100,7 +100,7 @@ $ go mod tidy
 $ go build
 ```
 
-> :information_source: Note that:
+> [!IMPORTANT]
 > 1. You have to run the binary with `sudo` since it needs to change the linux qdisc, so it needs enough permissions to do that.
 > 2. It's not recommended to change `cakeUplink` and `cakeDownlink` parameters in the `plugin_query_log.go` file as they are intended to only handle `bandwidth` and `rtt`. If you need to change CAKE's parameters, change them directly from the terminal.
 
