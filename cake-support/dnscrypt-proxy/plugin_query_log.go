@@ -101,8 +101,8 @@ func cake() {
 			}
 		} else if !bufferbloatState {
 			// fast recovery uplink & downlink
-			bwUL = bwUL * 2
-			bwDL = bwDL * 2
+			bwUL = maxUL
+			bwDL = maxDL
 		}
 
 		// automatically limit max bandwidth to 90%
