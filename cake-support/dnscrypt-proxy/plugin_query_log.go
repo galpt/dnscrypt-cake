@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"os/exec"
 	"strings"
@@ -41,17 +42,25 @@ const (
 	// ------
 	Mbit = 1000    // 1 Mbit
 	Gbit = 1000000 // 1 Gbit
+	// ------
+	B float64 = 0.7
+	C float64 = 0.4
 )
 
 // do not touch these.
 // should be maintained by the functions automatically.
 var (
-	bwUL   = 2
-	bwDL   = 2
-	bwUL1  = 1
-	bwDL1  = 1
-	bwUL90 = 90
-	bwDL90 = 90
+	bwUL   float64 = 2
+	bwDL   float64 = 2
+	bwUL90 float64 = 90
+	bwDL90 float64 = 90
+
+	lastBwUL                   float64 = 90
+	lastBwDL                   float64 = 90
+	lastBufferbloatTimestamp   time.Time
+	lastBufferbloatTimeElapsed time.Duration = 10 // this will be in seconds
+	kUL                        float64       = 1
+	kDL                        float64       = 1
 
 	// default to 100ms rtt.
 	// in Go, "time.Duration" defaults to nanoseconds.
@@ -63,46 +72,44 @@ var (
 	autoSplitGSO = "split-gso"
 
 	// bufferbloat state
-	bufferbloatState      = false
-	bufferbloatStateCount = 0
+	bufferbloatState = false
 )
 
 // functions for adjusting cake
 func cake() {
 
 	// calculate bandwidth percentage
-	bwUL1 = ((maxUL * 1) / 100)
-	bwDL1 = ((maxDL * 1) / 100)
 	bwUL90 = ((maxUL * 90) / 100)
 	bwDL90 = ((maxDL * 90) / 100)
+
+	// set last bandwidth values
+	lastBwUL = maxUL
+	lastBwDL = maxDL
 
 	// infinite loop to change cake parameters in real-time
 	for {
 
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 
 		// handle bufferbloat state
 		if bufferbloatState {
 
-			// a check for connections slower than 1 Mbit/s
-			// (i.e. data cellular ISPs with Fair Usage Policy).
-			if bwUL1 < Mbit || bwDL1 < Mbit {
-				bwUL = bwUL1
-				bwDL = bwDL1
-			} else if bwUL1 > Mbit || bwDL1 > Mbit {
-				bwUL = Mbit
-				bwDL = Mbit
-			}
+			// this is T
+			lastBufferbloatTimeElapsed = time.Since(lastBufferbloatTimestamp) / time.Duration(float64(time.Second))
 
-			bufferbloatStateCount++
-			if bufferbloatStateCount >= 5 {
-				bufferbloatStateCount = 0
-				bufferbloatState = false
-			}
+			// this is K
+			kUL = math.Cbrt((lastBwUL * (1 - B) / C))
+			kDL = math.Cbrt((lastBwDL * (1 - B) / C))
+
+			// cubic function
+			bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + lastBwUL
+			bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + lastBwDL
+
+			bufferbloatState = false
 		} else if !bufferbloatState {
-			// fast recovery uplink & downlink
-			bwUL = maxUL
-			bwDL = maxDL
+			// increase bandwidth slowly
+			bwUL = bwUL * 2
+			bwDL = bwDL * 2
 		}
 
 		// automatically limit max bandwidth to 90%
@@ -120,8 +127,12 @@ func cake() {
 			autoSplitGSO = "no-split-gso"
 		}
 
+		// update last bandwidth values
+		lastBwUL = bwUL
+		lastBwDL = bwDL
+
 		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
+		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err := cakeUplink.Output()
 
 		if err != nil {
@@ -129,7 +140,7 @@ func cake() {
 			return
 		}
 		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
+		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err = cakeDownlink.Output()
 
 		if err != nil {
@@ -236,23 +247,10 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// check if the real RTT increases (unstable) or not.
 		if newRTT > oldRTT {
 
-			// a check for connections slower than 1 Mbit/s
-			// (i.e. data cellular ISPs with Fair Usage Policy).
-			if bwUL1 < Mbit || bwDL1 < Mbit {
-				bwUL = bwUL1
-				bwDL = bwDL1
-			} else if bwUL1 > Mbit || bwDL1 > Mbit {
-				bwUL = Mbit
-				bwDL = Mbit
-			}
+			// update timestamp
+			lastBufferbloatTimestamp = time.Now()
 
-			// use autoSplitGSO
-			if bwUL < Gbit || bwDL < Gbit {
-				autoSplitGSO = "split-gso"
-			} else if bwUL > Gbit || bwDL > Gbit {
-				autoSplitGSO = "no-split-gso"
-			}
-
+			// update bufferbloat status
 			bufferbloatState = true
 
 		}
@@ -260,32 +258,12 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// normalize RTT
 		if newRTT < internetRTT {
 			newRTT = internetRTT
-		}
-		if newRTT > satelliteRTT {
+		} else if newRTT > satelliteRTT {
 			newRTT = satelliteRTT
 		}
 
 		// convert to microseconds
 		newRTTus = newRTT / time.Microsecond
-
-		// update cake settings based on real world data.
-		// ------
-		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
-		output, err := cakeUplink.Output()
-
-		if err != nil {
-			fmt.Println(err.Error() + ": " + string(output))
-			return errors.New("Failed setting up cakeUplink")
-		}
-		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%dkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
-		output, err = cakeDownlink.Output()
-
-		if err != nil {
-			fmt.Println(err.Error() + ": " + string(output))
-			return errors.New("Failed setting up cakeDownlink")
-		}
 
 		// update oldRTT
 		oldRTT = newRTT
