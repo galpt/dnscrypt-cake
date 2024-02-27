@@ -77,7 +77,7 @@ Below are the CC algorithms that we have tested and worked well with `dnscrypt-c
 
 1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 100ms - 1000ms or not.
 If yes, then use that as CAKE's `rtt`, if not then use `rtt 100ms` if it's less than 100ms, and `rtt 1000ms` if it's more than 1000ms.
-2. `dnscrypt-cake` will then reduce CAKE's `bandwidth` to 1 Mbit/s or 1% of `maxDL`/`maxUL` if 1% bandwidth of them is lower than 1 Mbit/s.
+2. `dnscrypt-cake` will then adjust CAKE's `bandwidth` using a cubic function.
 3. The `cake()` function will try to handle `bandwidth`, `rtt`, and `split-gso` in milliseconds.
 
 * * *
