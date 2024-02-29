@@ -98,14 +98,8 @@ func cake() {
 			lastBwUL = bwUL
 			lastBwDL = bwDL
 
-			// increase bandwidth slowly at first, then rapidly.
-			if bwUL <= lastBwUL || bwDL <= lastBwDL {
-				bwUL++
-				bwDL++
-			} else if bwUL > lastBwUL || bwDL > lastBwDL {
-				bwUL = bwUL * 2
-				bwDL = bwDL * 2
-			}
+			bwUL = bwUL * 2
+			bwDL = bwDL * 2
 
 		} else if bufferbloatState {
 
