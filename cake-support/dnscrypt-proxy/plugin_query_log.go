@@ -75,7 +75,7 @@ var (
 	bufferbloatState = false
 )
 
-// functions for adjusting cake
+// cake function
 func cake() {
 
 	// calculate bandwidth percentage
@@ -83,8 +83,8 @@ func cake() {
 	bwDL90 = ((maxDL * 90) / 100)
 
 	// set last bandwidth values
-	lastBwUL = maxUL
-	lastBwDL = maxDL
+	lastBwUL = Mbit
+	lastBwDL = Mbit
 
 	// infinite loop to change cake parameters in real-time
 	for {
@@ -107,10 +107,28 @@ func cake() {
 
 			bufferbloatState = false
 		} else if !bufferbloatState {
-			// increase bandwidth slowly
+
+			// update last bandwidth values
+			lastBwUL = bwUL
+			lastBwDL = bwDL
+
+			// increase bandwidth slowly but not too slow
 			bwUL = bwUL * 2
 			bwDL = bwDL * 2
 		}
+
+		// save newRTT to newRTTus
+		newRTTus = newRTT
+
+		// normalize RTT
+		if newRTTus < regionalRTT {
+			newRTTus = regionalRTT
+		} else if newRTTus > satelliteRTT {
+			newRTTus = satelliteRTT
+		}
+
+		// convert to microseconds
+		newRTTus = newRTTus / time.Microsecond
 
 		// automatically limit max bandwidth to 90%
 		if bwUL > bwUL90 {
@@ -126,10 +144,6 @@ func cake() {
 		} else if bwUL > Gbit || bwDL > Gbit {
 			autoSplitGSO = "no-split-gso"
 		}
-
-		// update last bandwidth values
-		lastBwUL = bwUL
-		lastBwDL = bwDL
 
 		// set uplink
 		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
@@ -254,16 +268,6 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 			bufferbloatState = true
 
 		}
-
-		// normalize RTT
-		if newRTT < internetRTT {
-			newRTT = internetRTT
-		} else if newRTT > satelliteRTT {
-			newRTT = satelliteRTT
-		}
-
-		// convert to microseconds
-		newRTTus = newRTT / time.Microsecond
 
 		// update oldRTT
 		oldRTT = newRTT
