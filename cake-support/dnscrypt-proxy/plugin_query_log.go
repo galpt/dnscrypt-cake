@@ -26,8 +26,8 @@ const (
 	// adjust "maxUL" and "maxDL" based on the maximum speed
 	// advertised by your ISP (in Kilobit/s format).
 	// 1 Mbit = 1000 kbit.
-	maxUL = 4000000
-	maxDL = 4000000
+	maxUL = 200000
+	maxDL = 200000
 	// ------
 
 	// do not touch these.
@@ -83,8 +83,8 @@ func cake() {
 	bwDL90 = ((maxDL * 90) / 100)
 
 	// set last bandwidth values
-	lastBwUL = Mbit
-	lastBwDL = Mbit
+	bwUL = maxUL
+	bwDL = maxDL
 
 	// infinite loop to change cake parameters in real-time
 	for {
@@ -92,8 +92,26 @@ func cake() {
 		time.Sleep(200 * time.Millisecond)
 
 		// handle bufferbloat state
-		if bufferbloatState {
+		if !bufferbloatState {
 
+			// update last bandwidth values
+			lastBwUL = bwUL
+			lastBwDL = bwDL
+
+			// increase bandwidth slowly at first, then rapidly.
+			if bwUL <= lastBwUL || bwDL <= lastBwDL {
+				bwUL++
+				bwDL++
+			} else if bwUL > lastBwUL || bwDL > lastBwDL {
+				bwUL = bwUL * 2
+				bwDL = bwDL * 2
+			}
+
+		} else if bufferbloatState {
+
+			// cubic function.
+			// see https://learn-sys.github.io/cn/slides/r0/week12-1.pdf for the details.
+			// ------
 			// this is T
 			lastBufferbloatTimeElapsed = time.Since(lastBufferbloatTimestamp) / time.Duration(float64(time.Second))
 
@@ -101,28 +119,26 @@ func cake() {
 			kUL = math.Cbrt((lastBwUL * (1 - B) / C))
 			kDL = math.Cbrt((lastBwDL * (1 - B) / C))
 
-			// cubic function
-			bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + lastBwUL
-			bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + lastBwDL
+			// check T
+			if lastBufferbloatTimeElapsed <= 0 {
+
+				bwUL = B * lastBwUL
+				bwDL = B * lastBwDL
+			} else if lastBufferbloatTimeElapsed > 0 {
+
+				bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + lastBwUL
+				bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + lastBwDL
+			}
 
 			bufferbloatState = false
-		} else if !bufferbloatState {
-
-			// update last bandwidth values
-			lastBwUL = bwUL
-			lastBwDL = bwDL
-
-			// increase bandwidth slowly but not too slow
-			bwUL = bwUL * 2
-			bwDL = bwDL * 2
 		}
 
 		// save newRTT to newRTTus
 		newRTTus = newRTT
 
 		// normalize RTT
-		if newRTTus < regionalRTT {
-			newRTTus = regionalRTT
+		if newRTTus < metroRTT {
+			newRTTus = metroRTT
 		} else if newRTTus > satelliteRTT {
 			newRTTus = satelliteRTT
 		}
