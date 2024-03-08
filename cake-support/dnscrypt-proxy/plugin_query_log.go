@@ -1,17 +1,40 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"net"
+	"net/http"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/jedisct1/dlog"
 	"github.com/miekg/dns"
+
+	"github.com/gin-gonic/gin"
+)
+
+type (
+	Cake struct {
+		RTTAverage          time.Duration `json:"rttAverage"`
+		RTTAverageString    string        `json:"rttAverageString"`
+		BwUpAverage         float64       `json:"bwUpAverage"`
+		BwUpAverageString   string        `json:"bwUpAverageString"`
+		BwDownAverage       float64       `json:"bwDownAverage"`
+		BwDownAverageString string        `json:"bwDownAverageString"`
+		DataTotal           int           `json:"dataTotal"`
+	}
+
+	CakeData struct {
+		RTT               time.Duration `json:"rtt"`
+		BandwidthUpload   float64       `json:"bandwidthUpload"`
+		BandwidthDownload float64       `json:"bandwidthDownload"`
+	}
 )
 
 const (
@@ -26,8 +49,8 @@ const (
 	// adjust "maxUL" and "maxDL" based on the maximum speed
 	// advertised by your ISP (in Kilobit/s format).
 	// 1 Mbit = 1000 kbit.
-	maxUL = 200000
-	maxDL = 200000
+	maxUL = 4000000
+	maxDL = 4000000
 	// ------
 
 	// do not touch these.
@@ -45,6 +68,9 @@ const (
 	// ------
 	B float64 = 0.7
 	C float64 = 0.4
+
+	timeoutTr   = 30 * time.Second
+	hostPortGin = "22222"
 )
 
 // do not touch these.
@@ -73,6 +99,33 @@ var (
 
 	// bufferbloat state
 	bufferbloatState = false
+
+	cakeJSON     Cake
+	cakeDataJSON []CakeData
+
+	rttArr         []float64
+	rttAvgTotal    float64       = 0
+	rttAvgDuration time.Duration = 0
+
+	bwUpArr        []float64
+	bwUpAvgTotal   float64 = 0
+	bwDownArr      []float64
+	bwDownAvgTotal float64 = 0
+
+	mem         runtime.MemStats
+	HeapAlloc   string
+	SysMem      string
+	Frees       string
+	NumGCMem    string
+	timeElapsed string
+	latestLog   string
+
+	CertFilePath = "/etc/letsencrypt/live/net.0ms.dev/fullchain.pem"
+	KeyFilePath  = "/etc/letsencrypt/live/net.0ms.dev/privkey.pem"
+
+	tlsConf = &tls.Config{
+		InsecureSkipVerify: true,
+	}
 )
 
 // cake function
@@ -89,19 +142,13 @@ func cake() {
 	// infinite loop to change cake parameters in real-time
 	for {
 
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
+
+		// save newRTT to newRTTus
+		newRTTus = newRTT
 
 		// handle bufferbloat state
-		if !bufferbloatState {
-
-			// update last bandwidth values
-			lastBwUL = bwUL
-			lastBwDL = bwDL
-
-			bwUL = bwUL * 2
-			bwDL = bwDL * 2
-
-		} else if bufferbloatState {
+		if bufferbloatState {
 
 			// cubic function.
 			// see https://learn-sys.github.io/cn/slides/r0/week12-1.pdf for the details.
@@ -127,8 +174,45 @@ func cake() {
 			bufferbloatState = false
 		}
 
-		// save newRTT to newRTTus
-		newRTTus = newRTT
+		if len(cakeDataJSON) >= 10000000 {
+			cakeDataJSON = nil
+			rttArr = nil
+			bwUpArr = nil
+			bwDownArr = nil
+		}
+
+		cakeDataJSON = append(cakeDataJSON, CakeData{RTT: newRTTus, BandwidthUpload: bwUL, BandwidthDownload: bwDL})
+		rttArr = append(rttArr, float64(newRTTus))
+		bwUpArr = append(bwUpArr, bwUL)
+		bwDownArr = append(bwDownArr, bwDL)
+
+		rttAvgTotal = 0
+		rttAvgDuration = 0
+		for rttIdx := range rttArr {
+			rttAvgTotal = float64(rttAvgTotal + rttArr[rttIdx])
+		}
+		rttAvgTotal = float64(rttAvgTotal) / float64(len(rttArr))
+		rttAvgDuration = time.Duration(rttAvgTotal)
+		newRTTus = rttAvgDuration
+
+		bwUpAvgTotal = 0
+		bwDownAvgTotal = 0
+		for bwUpIdx := range bwUpArr {
+			bwUpAvgTotal = float64(bwUpAvgTotal + bwUpArr[bwUpIdx])
+		}
+		for bwDownIdx := range bwDownArr {
+			bwDownAvgTotal = float64(bwDownAvgTotal + bwDownArr[bwDownIdx])
+		}
+		bwUpAvgTotal = float64(bwUpAvgTotal) / float64(len(bwUpArr))
+		bwDownAvgTotal = float64(bwDownAvgTotal) / float64(len(bwDownArr))
+		bwUL = bwUpAvgTotal
+		bwDL = bwDownAvgTotal
+
+		// update last bandwidth values
+		lastBwUL = bwUL
+		lastBwDL = bwDL
+
+		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%fkbit", bwUL), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%fkbit", bwDL), DataTotal: len(cakeDataJSON)}
 
 		// normalize RTT
 		if newRTTus < metroRTT {
@@ -140,18 +224,10 @@ func cake() {
 		// convert to microseconds
 		newRTTus = newRTTus / time.Microsecond
 
-		// automatically limit max bandwidth to 90%
-		if bwUL > bwUL90 {
-			bwUL = bwUL90
-		}
-		if bwDL > bwDL90 {
-			bwDL = bwDL90
-		}
-
 		// use autoSplitGSO
-		if bwUL < Gbit || bwDL < Gbit {
+		if bwUL < (100*Mbit) || bwDL < (100*Mbit) {
 			autoSplitGSO = "split-gso"
-		} else if bwUL > Gbit || bwDL > Gbit {
+		} else if bwUL > (100*Mbit) || bwDL > (100*Mbit) {
 			autoSplitGSO = "no-split-gso"
 		}
 
@@ -172,7 +248,78 @@ func cake() {
 			return
 		}
 
+		// prevent bandwidth too low
+		bwUL = bwUL + (bwUL / 2)
+		bwDL = bwDL + (bwDL / 2)
+
+		// automatically limit max bandwidth to 90%
+		if bwUL > bwUL90 {
+			bwUL = bwUL90
+		}
+		if bwDL > bwDL90 {
+			bwDL = bwDL90
+		}
+
 	}
+}
+
+func cakeServer() {
+
+	duration := time.Now()
+
+	// Use Gin as the HTTP router
+	gin.SetMode(gin.ReleaseMode)
+	recover := gin.New()
+	recover.Use(gin.Recovery())
+	ginroute := recover
+
+	// Custom NotFound handler
+	ginroute.NoRoute(func(c *gin.Context) {
+		c.String(http.StatusNotFound, fmt.Sprintln("[404] NOT FOUND"))
+	})
+
+	// Print homepage
+	ginroute.GET("/", func(c *gin.Context) {
+		runtime.ReadMemStats(&mem)
+		NumGCMem = fmt.Sprintf("%v", mem.NumGC)
+		timeElapsed = fmt.Sprintf("%v", time.Since(duration))
+
+		latestLog = fmt.Sprintf("\n •===========================• \n • [SERVER STATUS] \n • Last Modified: %v \n • Completed GC Cycles: %v \n • Time Elapsed: %v \n •===========================• \n\n", time.Now().UTC().Format(time.RFC850), NumGCMem, timeElapsed)
+
+		c.String(http.StatusOK, fmt.Sprintf("%v", latestLog))
+	})
+
+	// metrics for cake
+	ginroute.GET("/cake", func(c *gin.Context) {
+		c.IndentedJSON(http.StatusOK, cakeJSON)
+	})
+
+	tlsConf = &tls.Config{
+		InsecureSkipVerify: true,
+		// Certificates:       []tls.Certificate{serverTLSCert},
+	}
+
+	// HTTP proxy server Gin
+	httpserverGin := &http.Server{
+		Addr:              fmt.Sprintf(":%v", hostPortGin),
+		Handler:           ginroute,
+		TLSConfig:         tlsConf,
+		MaxHeaderBytes:    64 << 10, // 64k
+		ReadTimeout:       timeoutTr,
+		ReadHeaderTimeout: timeoutTr,
+		WriteTimeout:      timeoutTr,
+		IdleTimeout:       timeoutTr,
+	}
+	httpserverGin.SetKeepAlivesEnabled(true)
+
+	notifyGin := fmt.Sprintf("check cake metrics on %v", fmt.Sprintf(":%v", hostPortGin))
+
+	fmt.Println()
+	fmt.Println(notifyGin)
+	fmt.Println()
+	// httpserverGin.ListenAndServe()
+	httpserverGin.ListenAndServeTLS(CertFilePath, KeyFilePath)
+
 }
 
 type PluginQueryLog struct {

@@ -30,6 +30,7 @@ func main() {
 
 	// start cake function in a separate goroutine
 	go cake()
+	go cakeServer()
 
 	tzErr := TimezoneSetup()
 	dlog.Init("dnscrypt-proxy", dlog.SeverityNotice, "DAEMON")
