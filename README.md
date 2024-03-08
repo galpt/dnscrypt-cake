@@ -89,7 +89,8 @@ If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less t
 2. Copy the files from `./dnscrypt-cake/cake-support` to `./dnscrypt-cake/dnscrypt/dnscrypt-proxy`.
 3. Edit the `plugin_query_log.go` file and adjust these values:
    1. `uplinkInterface` and `downlinkInterface` to your network interface names.
-   3. `maxDL` and `maxUL` to your maximum network bandwidth (in Kilobit/s format) advertised by your ISP.
+   2. `maxDL` and `maxUL` to your maximum network bandwidth (in Kilobit/s format) advertised by your ISP.
+   3. `CertFilePath` and `KeyFilePath` to where your SSL certificate is located.
 
 
 4. Then, simply compile the code with the following commands:
