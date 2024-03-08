@@ -113,6 +113,10 @@ We are testing `dnscrypt-cake` in our server here:
 
 https://net.0ms.dev:7777/netstat
 
+See `dnscrypt-cake` metrics here:
+
+https://net.0ms.dev:22222/cake
+
 * * *
 
 ## Credits
