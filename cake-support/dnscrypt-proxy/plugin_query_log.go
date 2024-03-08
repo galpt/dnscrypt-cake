@@ -27,7 +27,7 @@ type (
 		BwUpAverageString   string        `json:"bwUpAverageString"`
 		BwDownAverage       float64       `json:"bwDownAverage"`
 		BwDownAverageString string        `json:"bwDownAverageString"`
-		DataTotal           int           `json:"dataTotal"`
+		DataTotal           string        `json:"dataTotal"`
 	}
 
 	CakeData struct {
@@ -69,8 +69,9 @@ const (
 	B float64 = 0.7
 	C float64 = 0.4
 
-	timeoutTr   = 30 * time.Second
-	hostPortGin = "22222"
+	timeoutTr     = 30 * time.Second
+	hostPortGin   = "22222"
+	cakeDataLimit = 100000000 // 100 million
 )
 
 // do not touch these.
@@ -174,7 +175,7 @@ func cake() {
 			bufferbloatState = false
 		}
 
-		if len(cakeDataJSON) >= 10000000 {
+		if len(cakeDataJSON) >= cakeDataLimit {
 			cakeDataJSON = nil
 			rttArr = nil
 			bwUpArr = nil
@@ -212,7 +213,7 @@ func cake() {
 		lastBwUL = bwUL
 		lastBwDL = bwDL
 
-		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%fkbit", bwUL), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%fkbit", bwDL), DataTotal: len(cakeDataJSON)}
+		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUL, (bwUL / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDL, (bwDL / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit)}
 
 		// normalize RTT
 		if newRTTus < metroRTT {
