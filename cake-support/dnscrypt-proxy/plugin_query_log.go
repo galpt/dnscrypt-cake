@@ -236,11 +236,13 @@ func cake() {
 		// save newRTT to newRTTus
 		newRTTus = newRTT
 
+		// when cakeDataLimit is reached,
+		// remove the first data from the slices.
 		if len(cakeDataJSON) >= cakeDataLimit {
-			cakeDataJSON = nil
-			rttArr = nil
-			bwUpArr = nil
-			bwDownArr = nil
+			cakeDataJSON = cakeDataJSON[1:]
+			rttArr = rttArr[1:]
+			bwUpArr = bwUpArr[1:]
+			bwDownArr = bwDownArr[1:]
 		}
 
 		//auto-scale & auto-limit max bandwidth to 90%.
