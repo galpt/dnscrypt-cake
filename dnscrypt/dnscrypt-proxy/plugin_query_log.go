@@ -68,10 +68,10 @@ const (
 	// ------
 	B float64 = 0.7
 	C float64 = 0.4
-
+	// ------
 	timeoutTr     = 30 * time.Second
 	hostPortGin   = "22222"
-	cakeDataLimit = 100000000 // 100 million
+	cakeDataLimit = 1000000 // 1 million
 )
 
 // do not touch these.
@@ -82,8 +82,6 @@ var (
 	bwUL90 float64 = 90
 	bwDL90 float64 = 90
 
-	lastBwUL                   float64 = 90
-	lastBwDL                   float64 = 90
 	lastBufferbloatTimestamp   time.Time
 	lastBufferbloatTimeElapsed time.Duration = 10 // this will be in seconds
 	kUL                        float64       = 1
@@ -143,37 +141,11 @@ func cake() {
 	// infinite loop to change cake parameters in real-time
 	for {
 
-		time.Sleep(10 * time.Millisecond)
+		// sleep for 1 millisecond
+		time.Sleep(time.Millisecond)
 
 		// save newRTT to newRTTus
 		newRTTus = newRTT
-
-		// handle bufferbloat state
-		if bufferbloatState {
-
-			// cubic function.
-			// see https://learn-sys.github.io/cn/slides/r0/week12-1.pdf for the details.
-			// ------
-			// this is T
-			lastBufferbloatTimeElapsed = time.Since(lastBufferbloatTimestamp) / time.Duration(float64(time.Second))
-
-			// this is K
-			kUL = math.Cbrt((lastBwUL * (1 - B) / C))
-			kDL = math.Cbrt((lastBwDL * (1 - B) / C))
-
-			// check T
-			if lastBufferbloatTimeElapsed <= 0 {
-
-				bwUL = B * lastBwUL
-				bwDL = B * lastBwDL
-			} else if lastBufferbloatTimeElapsed > 0 {
-
-				bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + lastBwUL
-				bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + lastBwDL
-			}
-
-			bufferbloatState = false
-		}
 
 		if len(cakeDataJSON) >= cakeDataLimit {
 			cakeDataJSON = nil
@@ -209,11 +181,37 @@ func cake() {
 		bwUL = bwUpAvgTotal
 		bwDL = bwDownAvgTotal
 
-		// update last bandwidth values
-		lastBwUL = bwUL
-		lastBwDL = bwDL
-
 		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUL, (bwUL / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDL, (bwDL / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit)}
+
+		// handle bufferbloat state
+		if !bufferbloatState {
+
+			// restore bandwidth, not too fast but not too slow.
+			if bwUL < bwUL90 || bwDL < bwDL90 {
+				bwUL = bwUL + (bwUL * 0.125)
+				bwDL = bwDL + (bwDL * 0.125)
+			}
+
+		} else if bufferbloatState {
+
+			// cubic function.
+			// see https://learn-sys.github.io/cn/slides/r0/week12-1.pdf for the details.
+			// ------
+			// this is T
+			lastBufferbloatTimeElapsed = time.Since(lastBufferbloatTimestamp) / time.Duration(float64(time.Second))
+
+			// this is K
+			kUL = math.Cbrt((bwUL * (1 - B) / C))
+			kDL = math.Cbrt((bwDL * (1 - B) / C))
+
+			// check T
+			bwUL = B * bwUL
+			bwDL = B * bwDL
+			bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + bwUL
+			bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + bwDL
+
+			bufferbloatState = false
+		}
 
 		// normalize RTT
 		if newRTTus < metroRTT {
@@ -232,6 +230,15 @@ func cake() {
 			autoSplitGSO = "no-split-gso"
 		}
 
+		// automatically limit max bandwidth to 90%.
+		// should be like this to handle both values separately.
+		if bwUL > bwUL90 {
+			bwUL = bwUL90
+		}
+		if bwDL > bwDL90 {
+			bwDL = bwDL90
+		}
+
 		// set uplink
 		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
 		output, err := cakeUplink.Output()
@@ -247,18 +254,6 @@ func cake() {
 		if err != nil {
 			fmt.Println(err.Error() + ": " + string(output))
 			return
-		}
-
-		// prevent bandwidth too low
-		bwUL = bwUL + (bwUL / 2)
-		bwDL = bwDL + (bwDL / 2)
-
-		// automatically limit max bandwidth to 90%
-		if bwUL > bwUL90 {
-			bwUL = bwUL90
-		}
-		if bwDL > bwDL90 {
-			bwDL = bwDL90
 		}
 
 	}
