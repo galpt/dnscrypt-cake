@@ -75,6 +75,11 @@ func main() {
 	// close response body after being used
 	getData.Body.Close()
 
+	// start cake function in a separate goroutine
+	go oisdBigFetch()
+	go cake()
+	go cakeServer()
+
 	tzErr := TimezoneSetup()
 	dlog.Init("dnscrypt-proxy", dlog.SeverityNotice, "DAEMON")
 	if tzErr != nil {
@@ -161,10 +166,6 @@ func main() {
 		app.Start(nil)
 	}
 
-	// start cake function in a separate goroutine
-	go oisdBigFetch()
-	go cake()
-	go cakeServer()
 }
 
 func (app *App) Start(service service.Service) error {
