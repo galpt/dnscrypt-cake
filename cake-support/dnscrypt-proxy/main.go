@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"runtime"
 	"sync"
@@ -28,9 +30,50 @@ type App struct {
 
 func main() {
 
-	// start cake function in a separate goroutine
-	go cake()
-	go cakeServer()
+	// fetch OISD Big blocklist
+	req, err := http.NewRequest("GET", "https://big.oisd.nl/domainswild", nil)
+	if err != nil {
+		fmt.Println(" [req] ", err)
+		return
+	}
+	req.Header.Set("User-Agent", usrAgent)
+
+	getData, err := h1Client.Do(req)
+	if err != nil {
+		fmt.Println(" [getData] ", err)
+		return
+	}
+
+	// delete 'oisd-big.txt' file
+	osFS.RemoveAll("./oisd-big.txt")
+
+	// create a new file
+	createFile, err := osFS.Create("./oisd-big.txt")
+	if err != nil {
+		fmt.Println(" [createFile] ", err)
+
+		return
+	}
+
+	// write response body to the newly created file
+	writeFile, err := io.Copy(createFile, getData.Body)
+	if err != nil {
+		fmt.Println(" [writeFile] ", err)
+		return
+	}
+
+	// print to let us know if blocklist has been downloaded and processed
+	sizeinfo := fmt.Sprintf("'oisd-big.txt' has been processed (%v KB | %v MB).", (writeFile / Kilobyte), (writeFile / Megabyte))
+	fmt.Println(sizeinfo)
+
+	// close io
+	if err := createFile.Close(); err != nil {
+		fmt.Println(" [createFile.Close()] ", err)
+		return
+	}
+
+	// close response body after being used
+	getData.Body.Close()
 
 	tzErr := TimezoneSetup()
 	dlog.Init("dnscrypt-proxy", dlog.SeverityNotice, "DAEMON")
@@ -117,6 +160,11 @@ func main() {
 	} else {
 		app.Start(nil)
 	}
+
+	// start cake function in a separate goroutine
+	go oisdBigFetch()
+	go cake()
+	go cakeServer()
 }
 
 func (app *App) Start(service service.Service) error {

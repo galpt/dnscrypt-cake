@@ -17,6 +17,7 @@ import (
 	"github.com/miekg/dns"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/afero"
 )
 
 type (
@@ -73,9 +74,12 @@ const (
 	B float64 = 0.7
 	C float64 = 0.4
 	// ------
+	Megabyte      = 1 << 20
+	Kilobyte      = 1 << 10
 	timeoutTr     = 30 * time.Second
 	hostPortGin   = "0.0.0.0:22222"
 	cakeDataLimit = 1000000 // 1 million
+	usrAgent      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 )
 
 // do not touch these.
@@ -132,7 +136,85 @@ var (
 	tlsConf = &tls.Config{
 		InsecureSkipVerify: true,
 	}
+
+	h1Tr = &http.Transport{
+		DisableKeepAlives:      false,
+		DisableCompression:     false,
+		ForceAttemptHTTP2:      false,
+		TLSClientConfig:        tlsConf,
+		TLSHandshakeTimeout:    timeoutTr,
+		ResponseHeaderTimeout:  timeoutTr,
+		IdleConnTimeout:        timeoutTr,
+		ExpectContinueTimeout:  1 * time.Second,
+		MaxIdleConns:           1000,     // Prevents resource exhaustion
+		MaxIdleConnsPerHost:    100,      // Increases performance and prevents resource exhaustion
+		MaxConnsPerHost:        0,        // 0 for no limit
+		MaxResponseHeaderBytes: 64 << 10, // 64k
+		WriteBufferSize:        64 << 10, // 64k
+		ReadBufferSize:         64 << 10, // 64k
+	}
+
+	h1Client = &http.Client{
+		Transport: h1Tr,
+		Timeout:   timeoutTr,
+	}
+
+	osFS = afero.NewOsFs()
 )
+
+// fetch OISD Big blocklist every 1 hour
+func oisdBigFetch() {
+
+	for {
+
+		req, err := http.NewRequest("GET", "https://big.oisd.nl/domainswild", nil)
+		if err != nil {
+			fmt.Println(" [req] ", err)
+			return
+		}
+		req.Header.Set("User-Agent", usrAgent)
+
+		getData, err := h1Client.Do(req)
+		if err != nil {
+			fmt.Println(" [getData] ", err)
+			return
+		}
+
+		// delete 'oisd-big.txt' file
+		osFS.RemoveAll("./oisd-big.txt")
+
+		// create a new file
+		createFile, err := osFS.Create("./oisd-big.txt")
+		if err != nil {
+			fmt.Println(" [createFile] ", err)
+
+			return
+		}
+
+		// write response body to the newly created file
+		writeFile, err := io.Copy(createFile, getData.Body)
+		if err != nil {
+			fmt.Println(" [writeFile] ", err)
+			return
+		}
+
+		// print to let us know if blocklist has been downloaded and processed
+		sizeinfo := fmt.Sprintf("'oisd-big.txt' has been processed (%v KB | %v MB).", (writeFile / Kilobyte), (writeFile / Megabyte))
+		fmt.Println(sizeinfo)
+
+		// close io
+		if err := createFile.Close(); err != nil {
+			fmt.Println(" [createFile.Close()] ", err)
+			return
+		}
+
+		// close response body after being used
+		getData.Body.Close()
+
+		// sleep for 1 hour
+		time.Sleep(1 * time.Hour)
+	}
+}
 
 // cake function
 func cake() {
