@@ -104,6 +104,7 @@ $ go build
 > [!IMPORTANT]
 > 1. You have to run the binary with `sudo` since it needs to change the linux qdisc, so it needs enough permissions to do that.
 > 2. It's not recommended to change `cakeUplink` and `cakeDownlink` parameters in the `plugin_query_log.go` file as they are intended to only handle `bandwidth` and `rtt`. If you need to change CAKE's parameters, change them directly from the terminal.
+> 3. Use `httpserverGin.ListenAndServe()` instead of `httpserverGin.ListenAndServeTLS(CertFilePath, KeyFilePath)` in the `plugin_query_log.go` file if you don't want to use SSL certificate (i.e. you're using `localhost` instead of `0.0.0.0`).
 
 * * *
 
