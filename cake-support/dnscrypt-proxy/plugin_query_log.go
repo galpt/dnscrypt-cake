@@ -161,15 +161,18 @@ func cake() {
 			bwDownArr = nil
 		}
 
-		bwUL = bwUL * 2
-		bwDL = bwDL * 2
-
-		// automatically limit max bandwidth to 90%.
+		//auto-scale & auto-limit max bandwidth to 90%.
 		// should be like this to handle both values separately.
-		if bwUL > bwUL90 {
+		if bwUL < bwUL90 {
+			bwUL = bwUL * 2
+		}
+		if bwDL < bwDL90 {
+			bwDL = bwDL * 2
+		}
+		if bwUL >= bwUL90 {
 			bwUL = bwUL90
 		}
-		if bwDL > bwDL90 {
+		if bwDL >= bwDL90 {
 			bwDL = bwDL90
 		}
 
