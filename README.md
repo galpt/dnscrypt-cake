@@ -80,6 +80,13 @@ If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less t
 2. `dnscrypt-cake` will then adjust CAKE's `bandwidth` using a cubic function.
 3. The `cake()` function will try to handle `bandwidth`, `rtt`, and `split-gso` in milliseconds.
 
+> [!NOTE]
+>
+> Using a cubic function is just one part of the entire logic. The `cake()` function will configure CAKE and re-calculate `rtt` and `bandwidth`, then save the latest data into several slices/arrays.
+> The arrays can hold up to 1 million data, and every new data will be saved every 1 millisecond. All the data will be used to calculate the final values for configuring CAKE's `rtt` and `bandwidth`.
+>
+> This is an attempt to intelligently configure CAKE's `rtt` and `bandwidth` based on all the data, so it doesn't need to aggresively probe DNS servers just like the original [cake-autorate](https://github.com/lynxthecat/cake-autorate) implementation.
+
 * * *
 
 ## How to compile the code
@@ -89,7 +96,7 @@ If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less t
 2. Copy the files from `./dnscrypt-cake/cake-support` to `./dnscrypt-cake/dnscrypt/dnscrypt-proxy`.
 3. Edit the `plugin_query_log.go` file and adjust these values:
    1. `uplinkInterface` and `downlinkInterface` to your network interface names.
-   2. `maxDL` and `maxUL` to your maximum network bandwidth (in Kilobit/s format) advertised by your ISP.
+   2. `maxDL` and `maxUL` to your maximum network bandwidth (in kilobit/s format) advertised by your ISP.
    3. `CertFilePath` and `KeyFilePath` to where your SSL certificate is located.
 
 
