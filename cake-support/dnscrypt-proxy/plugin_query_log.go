@@ -53,8 +53,8 @@ const (
 	// adjust "maxUL" and "maxDL" based on the maximum speed
 	// advertised by your ISP (in Kilobit/s format).
 	// 1 Mbit = 1000 kbit.
-	maxUL = 4000000
-	maxDL = 4000000
+	maxUL float64 = 4000000
+	maxDL float64 = 4000000
 	// ------
 
 	// do not touch these.
@@ -67,8 +67,8 @@ const (
 	oceanicRTT   time.Duration = 300000000
 	satelliteRTT time.Duration = 1000000000
 	// ------
-	Mbit = 1000    // 1 Mbit
-	Gbit = 1000000 // 1 Gbit
+	Mbit float64 = 1000    // 1 Mbit
+	Gbit float64 = 1000000 // 1 Gbit
 	// ------
 	B float64 = 0.7
 	C float64 = 0.4
@@ -235,6 +235,21 @@ func cake() {
 			// check T
 			bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + bwUL
 			bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + bwDL
+
+			// prevent bandwidth too low
+			if bwUL < Mbit {
+				bwUL = Mbit
+			}
+			if bwDL < Mbit {
+				bwDL = Mbit
+			}
+
+			if bwUL > (10 * Mbit) {
+				bwUL = 10 * Mbit
+			}
+			if bwDL > (10 * Mbit) {
+				bwDL = 10 * Mbit
+			}
 
 			bufferbloatState = false
 		}
