@@ -29,7 +29,7 @@
 ##
 ## Remove the leading # first to enable this; lines starting with # are ignored.
 
-server_names = ['cloudflare']
+server_names = ['cloudflare-security']
 
 
 ## List of local addresses and ports to listen to. Can be IPv4 and/or IPv6.
@@ -44,7 +44,7 @@ listen_addresses = ['0.0.0.0:53']
 
 ## Maximum number of simultaneous client connections to accept
 
-max_clients = 1000
+max_clients = 100000
 
 
 ## Switch to a different system user after listening sockets have been created.
@@ -79,10 +79,10 @@ odoh_servers = false
 require_dnssec = false
 
 # Server must not log user queries (declarative)
-require_nolog = true
+require_nolog = false
 
 # Server must not enforce its own blocklist (for parental control, ads blocking...)
-require_nofilter = true
+require_nofilter = false
 
 # Server names to avoid even if they match all criteria
 disabled_server_names = []
@@ -101,7 +101,7 @@ force_tcp = false
 ## Note that, like DNSCrypt but unlike other HTTP versions, this uses
 ## UDP and (usually) port 443 instead of TCP.
 
-http3 = false
+http3 = true
 
 
 ## SOCKS proxy
@@ -122,7 +122,7 @@ http3 = false
 ## increase this. Startup may be slower if you do so.
 ## Don't increase it too much. 10000 is the highest reasonable value.
 
-timeout = 5000
+timeout = 10000
 
 
 ## Keepalive for HTTP (HTTPS, HTTP/2, HTTP/3) queries, in seconds
@@ -267,7 +267,7 @@ cert_refresh_delay = 240
 ## not be sent there. If you're using DNSCrypt or Anonymized DNS and your
 ## lists are up to date, these resolvers will not even be used.
 
-bootstrap_resolvers = ['1.1.1.1:53']
+bootstrap_resolvers = ['1.1.1.2:53']
 
 
 ## When internal DNS resolution is required, for example to retrieve
@@ -292,7 +292,7 @@ ignore_system_dns = true
 ## Use 0 to not test for connectivity at all (not recommended),
 ## and -1 to wait as much as possible.
 
-netprobe_timeout = 60
+netprobe_timeout = 5
 
 ## Address and port to try initializing a connection to, just to check
 ## if the network is up. It can be any address and any port, even if
@@ -303,7 +303,7 @@ netprobe_timeout = 60
 ## On other operating systems, the connection will be initialized
 ## but nothing will be sent at all.
 
-netprobe_address = '1.1.1.1:53'
+netprobe_address = '1.1.1.2:53'
 
 
 ## Offline mode - Do not use any remote encrypted servers.
@@ -496,7 +496,7 @@ cache_neg_max_ttl = 600
 ## Path to the query log file (absolute, or relative to the same directory as the config file)
 ## Can be set to /dev/stdout in order to log to the standard output.
 
-file = 'query.log'
+file = '/dev/shm/query.log'
 
 
 ## Query log format (currently supported: tsv and ltsv)

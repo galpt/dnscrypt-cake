@@ -27,6 +27,10 @@ type (
 		BwUpAverageString   string        `json:"bwUpAverageString"`
 		BwDownAverage       float64       `json:"bwDownAverage"`
 		BwDownAverageString string        `json:"bwDownAverageString"`
+		BwUpMedian          float64       `json:"bwUpMedian"`
+		BwUpMedianString    string        `json:"bwUpMedianString"`
+		BwDownMedian        float64       `json:"bwDownMedian"`
+		BwDownMedianString  string        `json:"bwDownMedianString"`
 		DataTotal           string        `json:"dataTotal"`
 	}
 
@@ -70,7 +74,7 @@ const (
 	C float64 = 0.4
 	// ------
 	timeoutTr     = 30 * time.Second
-	hostPortGin   = "22222"
+	hostPortGin   = "0.0.0.0:22222"
 	cakeDataLimit = 1000000 // 1 million
 )
 
@@ -110,6 +114,9 @@ var (
 	bwUpAvgTotal   float64 = 0
 	bwDownArr      []float64
 	bwDownAvgTotal float64 = 0
+
+	bwUpMedTotal   float64 = 0
+	bwDownMedTotal float64 = 0
 
 	mem         runtime.MemStats
 	HeapAlloc   string
@@ -154,6 +161,18 @@ func cake() {
 			bwDownArr = nil
 		}
 
+		bwUL = bwUL * 2
+		bwDL = bwDL * 2
+
+		// automatically limit max bandwidth to 90%.
+		// should be like this to handle both values separately.
+		if bwUL > bwUL90 {
+			bwUL = bwUL90
+		}
+		if bwDL > bwDL90 {
+			bwDL = bwDL90
+		}
+
 		cakeDataJSON = append(cakeDataJSON, CakeData{RTT: newRTTus, BandwidthUpload: bwUL, BandwidthDownload: bwDL})
 		rttArr = append(rttArr, float64(newRTTus))
 		bwUpArr = append(bwUpArr, bwUL)
@@ -178,21 +197,27 @@ func cake() {
 		}
 		bwUpAvgTotal = float64(bwUpAvgTotal) / float64(len(bwUpArr))
 		bwDownAvgTotal = float64(bwDownAvgTotal) / float64(len(bwDownArr))
-		bwUL = bwUpAvgTotal
-		bwDL = bwDownAvgTotal
 
-		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUL, (bwUL / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDL, (bwDL / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit)}
+		if len(bwUpArr)%2 == 0 {
+			bwUL = ((bwUpArr[len(bwUpArr)-1] / 2) + ((bwUpArr[len(bwUpArr)-1]/2)+1)/2)
+		} else {
+			bwUL = (bwUpArr[len(bwUpArr)-1] + 1) / 2
+		}
+
+		if len(bwDownArr)%2 == 0 {
+			bwDL = ((bwDownArr[len(bwDownArr)-1] / 2) + ((bwDownArr[len(bwDownArr)-1]/2)+1)/2)
+		} else {
+			bwDL = (bwDownArr[len(bwDownArr)-1] + 1) / 2
+		}
+
+		// update median values
+		bwUpMedTotal = bwUL
+		bwDownMedTotal = bwDL
+
+		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit)}
 
 		// handle bufferbloat state
-		if !bufferbloatState {
-
-			// restore bandwidth, not too fast but not too slow.
-			if bwUL < bwUL90 || bwDL < bwDL90 {
-				bwUL = bwUL + (bwUL * 0.125)
-				bwDL = bwDL + (bwDL * 0.125)
-			}
-
-		} else if bufferbloatState {
+		if bufferbloatState {
 
 			// cubic function.
 			// see https://learn-sys.github.io/cn/slides/r0/week12-1.pdf for the details.
@@ -205,8 +230,6 @@ func cake() {
 			kDL = math.Cbrt((bwDL * (1 - B) / C))
 
 			// check T
-			bwUL = B * bwUL
-			bwDL = B * bwDL
 			bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + bwUL
 			bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + bwDL
 
@@ -228,15 +251,6 @@ func cake() {
 			autoSplitGSO = "split-gso"
 		} else if bwUL > (100*Mbit) || bwDL > (100*Mbit) {
 			autoSplitGSO = "no-split-gso"
-		}
-
-		// automatically limit max bandwidth to 90%.
-		// should be like this to handle both values separately.
-		if bwUL > bwUL90 {
-			bwUL = bwUL90
-		}
-		if bwDL > bwDL90 {
-			bwDL = bwDL90
 		}
 
 		// set uplink
@@ -297,7 +311,7 @@ func cakeServer() {
 
 	// HTTP proxy server Gin
 	httpserverGin := &http.Server{
-		Addr:              fmt.Sprintf(":%v", hostPortGin),
+		Addr:              fmt.Sprintf("%v", hostPortGin),
 		Handler:           ginroute,
 		TLSConfig:         tlsConf,
 		MaxHeaderBytes:    64 << 10, // 64k
