@@ -33,6 +33,7 @@ type (
 		BwDownMedian        float64       `json:"bwDownMedian"`
 		BwDownMedianString  string        `json:"bwDownMedianString"`
 		DataTotal           string        `json:"dataTotal"`
+		ExecTimeCAKE        string        `json:"execTimeCAKE"`
 	}
 
 	CakeData struct {
@@ -78,7 +79,7 @@ const (
 	Kilobyte      = 1 << 10
 	timeoutTr     = 30 * time.Second
 	hostPortGin   = "0.0.0.0:22222"
-	cakeDataLimit = 1000000 // 1 million
+	cakeDataLimit = 10000000 // 10 million
 	usrAgent      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 )
 
@@ -109,6 +110,7 @@ var (
 
 	cakeJSON     Cake
 	cakeDataJSON []CakeData
+	cakeExecTime time.Time
 
 	rttArr         []float64
 	rttAvgTotal    float64       = 0
@@ -233,6 +235,9 @@ func cake() {
 		// sleep for 1 millisecond
 		time.Sleep(time.Millisecond)
 
+		// counting exec time starts from here
+		cakeExecTime = time.Now()
+
 		// save newRTT to newRTTus
 		newRTTus = newRTT
 
@@ -300,8 +305,6 @@ func cake() {
 		// update median values
 		bwUpMedTotal = bwUL
 		bwDownMedTotal = bwDL
-
-		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit)}
 
 		// handle bufferbloat state
 		if bufferbloatState {
@@ -371,6 +374,8 @@ func cake() {
 			fmt.Println(err.Error() + ": " + string(output))
 			return
 		}
+
+		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(newRTTus/time.Millisecond), float64(newRTTus/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", float64(time.Since(cakeExecTime)/time.Millisecond), float64(time.Since(cakeExecTime)/time.Microsecond))}
 
 	}
 }
