@@ -34,6 +34,7 @@ type (
 		BwDownMedianString  string        `json:"bwDownMedianString"`
 		DataTotal           string        `json:"dataTotal"`
 		ExecTimeCAKE        string        `json:"execTimeCAKE"`
+		ExecTimeAverageCAKE string        `json:"execTimeAverageCAKE"`
 	}
 
 	CakeData struct {
@@ -110,7 +111,11 @@ var (
 
 	cakeJSON     Cake
 	cakeDataJSON []CakeData
-	cakeExecTime time.Time
+
+	cakeExecTime            time.Time
+	cakeExecTimeArr         []float64
+	cakeExecTimeAvgTotal    float64       = 0
+	cakeExecTimeAvgDuration time.Duration = 0
 
 	rttArr         []float64
 	rttAvgTotal    float64       = 0
@@ -248,6 +253,7 @@ func cake() {
 			rttArr = rttArr[1:]
 			bwUpArr = bwUpArr[1:]
 			bwDownArr = bwDownArr[1:]
+			cakeExecTimeArr = cakeExecTimeArr[1:]
 		}
 
 		//auto-scale & auto-limit max bandwidth to 90%.
@@ -272,21 +278,20 @@ func cake() {
 
 		rttAvgTotal = 0
 		rttAvgDuration = 0
+		bwUpAvgTotal = 0
+		bwDownAvgTotal = 0
+		cakeExecTimeAvgTotal = 0
+		cakeExecTimeAvgDuration = 0
+
 		for rttIdx := range rttArr {
 			rttAvgTotal = float64(rttAvgTotal + rttArr[rttIdx])
+			bwUpAvgTotal = float64(bwUpAvgTotal + bwUpArr[rttIdx])
+			bwDownAvgTotal = float64(bwDownAvgTotal + bwDownArr[rttIdx])
 		}
+
 		rttAvgTotal = float64(rttAvgTotal) / float64(len(rttArr))
 		rttAvgDuration = time.Duration(rttAvgTotal)
 		newRTTus = rttAvgDuration
-
-		bwUpAvgTotal = 0
-		bwDownAvgTotal = 0
-		for bwUpIdx := range bwUpArr {
-			bwUpAvgTotal = float64(bwUpAvgTotal + bwUpArr[bwUpIdx])
-		}
-		for bwDownIdx := range bwDownArr {
-			bwDownAvgTotal = float64(bwDownAvgTotal + bwDownArr[bwDownIdx])
-		}
 		bwUpAvgTotal = float64(bwUpAvgTotal) / float64(len(bwUpArr))
 		bwDownAvgTotal = float64(bwDownAvgTotal) / float64(len(bwDownArr))
 
@@ -375,7 +380,16 @@ func cake() {
 			return
 		}
 
-		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(time.Millisecond)), (float64(rttAvgDuration) / float64(time.Microsecond))), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(time.Since(cakeExecTime)) / float64(time.Millisecond)), (float64(time.Since(cakeExecTime)) / float64(time.Microsecond)))}
+		cakeExecTimeArr = append(cakeExecTimeArr, float64(time.Since(cakeExecTime)))
+
+		for execTimeIdx := range cakeExecTimeArr {
+			cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal + cakeExecTimeArr[execTimeIdx])
+		}
+
+		cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal) / float64(len(cakeExecTimeArr))
+		cakeExecTimeAvgDuration = time.Duration(cakeExecTimeAvgTotal)
+
+		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(time.Millisecond)), (float64(rttAvgDuration) / float64(time.Microsecond))), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Millisecond)), (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Microsecond))), ExecTimeAverageCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeAvgDuration) / float64(time.Millisecond)), (float64(cakeExecTimeAvgDuration) / float64(time.Microsecond)))}
 
 	}
 }
