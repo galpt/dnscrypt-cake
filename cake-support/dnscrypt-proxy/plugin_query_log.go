@@ -69,11 +69,11 @@ const (
 	oceanicRTT   time.Duration = 300000000
 	satelliteRTT time.Duration = 1000000000
 	// ------
-	Mbit float64 = 1000    // 1 Mbit
-	Gbit float64 = 1000000 // 1 Gbit
+	Mbit float64 = 1000.00    // 1 Mbit
+	Gbit float64 = 1000000.00 // 1 Gbit
 	// ------
-	B float64 = 0.7
-	C float64 = 0.4
+	B float64 = 0.70
+	C float64 = 0.40
 	// ------
 	Megabyte      = 1 << 20
 	Kilobyte      = 1 << 10
@@ -375,7 +375,7 @@ func cake() {
 			return
 		}
 
-		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", float64(rttAvgDuration/time.Millisecond), float64(rttAvgDuration/time.Microsecond)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", float64(time.Since(cakeExecTime)/time.Millisecond), float64(time.Since(cakeExecTime)/time.Microsecond))}
+		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(time.Millisecond)), (float64(rttAvgDuration) / float64(time.Microsecond))), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(time.Since(cakeExecTime)) / float64(time.Millisecond)), (float64(time.Since(cakeExecTime)) / float64(time.Microsecond)))}
 
 	}
 }
