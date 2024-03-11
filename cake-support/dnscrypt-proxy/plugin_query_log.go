@@ -280,6 +280,7 @@ func cakeAutoSplitGSO() {
 }
 
 func cakeQdiscReconfigure() {
+
 	// set uplink
 	cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
 	output, err := cakeUplink.Output()
@@ -300,8 +301,8 @@ func cakeQdiscReconfigure() {
 
 func cakeBufferbloatBandwidth() {
 	// when a bufferbloat is detected, we should slow things down.
-	bwUL = float64(bwUL) * float64(0.5)
-	bwDL = float64(bwDL) * float64(0.5)
+	bwUL = float64(bwUL) * float64(0.2)
+	bwDL = float64(bwDL) * float64(0.2)
 }
 
 func cakeCalculateRTTandBandwidth() {
@@ -346,6 +347,12 @@ func cakeCalculateRTTandBandwidth() {
 	}
 }
 
+func cakeHandleAvgRTT() {
+	if rttAvgDuration > newRTTus {
+		newRTTus = rttAvgDuration
+	}
+}
+
 func cakeHandleJSON() {
 	cakeExecTimeArr = append(cakeExecTimeArr, float64(time.Since(cakeExecTime)))
 
@@ -356,7 +363,7 @@ func cakeHandleJSON() {
 	cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal) / float64(len(cakeExecTimeArr))
 	cakeExecTimeAvgDuration = time.Duration(cakeExecTimeAvgTotal)
 
-	cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(time.Millisecond)), (float64(rttAvgDuration) / float64(time.Microsecond))), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Millisecond)), (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Microsecond))), ExecTimeAverageCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeAvgDuration) / float64(time.Millisecond)), (float64(cakeExecTimeAvgDuration) / float64(time.Microsecond)))}
+	cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(1000.00)), float64(rttAvgDuration)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Millisecond)), (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Microsecond))), ExecTimeAverageCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeAvgDuration) / float64(time.Millisecond)), (float64(cakeExecTimeAvgDuration) / float64(time.Microsecond)))}
 }
 
 func bufferbloatTrue() {
@@ -405,6 +412,7 @@ func cake() {
 					cakeNormalizeRTT()
 					cakeAutoSplitGSO()
 					cakeQdiscReconfigure()
+
 				}
 
 			} else {
@@ -420,6 +428,7 @@ func cake() {
 					cakeNormalizeRTT()
 					cakeAutoSplitGSO()
 					cakeQdiscReconfigure()
+
 				}
 
 			}
@@ -445,7 +454,11 @@ func cake() {
 			cakeNormalizeRTT()
 			cakeAutoSplitGSO()
 			cakeQdiscReconfigure()
+
 		}
+
+		cakeHandleAvgRTT()
+		cakeQdiscReconfigure()
 
 		cakeHandleJSON()
 
