@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"os/exec"
@@ -91,11 +90,6 @@ var (
 	bwDL   float64 = 2
 	bwUL90 float64 = 90
 	bwDL90 float64 = 90
-
-	lastBufferbloatTimestamp   time.Time
-	lastBufferbloatTimeElapsed time.Duration = 10 // this will be in seconds
-	kUL                        float64       = 1
-	kDL                        float64       = 1
 
 	// default to 100ms rtt.
 	// in Go, "time.Duration" defaults to nanoseconds.
@@ -223,7 +217,156 @@ func oisdBigFetch() {
 	}
 }
 
-// cake function
+// cake functions
+func cakeCheckArrays() {
+	// when cakeDataLimit is reached,
+	// remove the first data from the slices.
+	if len(cakeDataJSON) >= cakeDataLimit {
+		cakeDataJSON = cakeDataJSON[1:]
+		rttArr = rttArr[1:]
+		bwUpArr = bwUpArr[1:]
+		bwDownArr = bwDownArr[1:]
+		cakeExecTimeArr = cakeExecTimeArr[1:]
+	}
+}
+
+func cakeAppendValues() {
+	cakeDataJSON = append(cakeDataJSON, CakeData{RTT: newRTTus, BandwidthUpload: bwUL, BandwidthDownload: bwDL})
+	rttArr = append(rttArr, float64(newRTTus))
+	bwUpArr = append(bwUpArr, bwUL)
+	bwDownArr = append(bwDownArr, bwDL)
+}
+
+func cakeMultiplyBandwidth() {
+
+	// multiply the values by 2 if they're less than 90%.
+	if bwUL < bwUL90 {
+		bwUL *= 2
+	}
+	if bwDL < bwDL90 {
+		bwDL *= 2
+	}
+
+	// limit current bandwidth values to 90% of maximum bandwidth specified.
+	if bwUL >= bwUL90 {
+		bwUL = bwUL90
+	}
+	if bwDL >= bwDL90 {
+		bwDL = bwDL90
+	}
+}
+
+func cakeNormalizeRTT() {
+	// normalize RTT
+	if newRTTus < (metroRTT / time.Microsecond) {
+		newRTTus = (metroRTT / time.Microsecond)
+	} else if newRTTus > (satelliteRTT / time.Microsecond) {
+		newRTTus = (satelliteRTT / time.Microsecond)
+	}
+}
+
+func cakeConvertRTTtoMicroseconds() {
+	// convert to microseconds
+	newRTTus = newRTT / time.Microsecond
+}
+
+func cakeAutoSplitGSO() {
+	// automatically use "split-gso" when bandwidth is less than 50%.
+	if bwUL < (float64(bwUL)*float64(0.5)) || bwDL < (float64(bwDL)*float64(0.5)) {
+		autoSplitGSO = "split-gso"
+	} else {
+		autoSplitGSO = "no-split-gso"
+	}
+}
+
+func cakeQdiscReconfigure() {
+	// set uplink
+	cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
+	output, err := cakeUplink.Output()
+
+	if err != nil {
+		fmt.Println(err.Error() + ": " + string(output))
+		return
+	}
+	// set downlink
+	cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
+	output, err = cakeDownlink.Output()
+
+	if err != nil {
+		fmt.Println(err.Error() + ": " + string(output))
+		return
+	}
+}
+
+func cakeBufferbloatBandwidth() {
+	// when a bufferbloat is detected, we should slow things down.
+	bwUL = float64(bwUL) * float64(0.5)
+	bwDL = float64(bwDL) * float64(0.5)
+}
+
+func cakeCalculateRTTandBandwidth() {
+	rttAvgTotal = 0
+	rttAvgDuration = 0
+	bwUpAvgTotal = 0
+	bwDownAvgTotal = 0
+	cakeExecTimeAvgTotal = 0
+	cakeExecTimeAvgDuration = 0
+
+	for rttIdx := range rttArr {
+		rttAvgTotal = float64(rttAvgTotal + rttArr[rttIdx])
+		bwUpAvgTotal = float64(bwUpAvgTotal + bwUpArr[rttIdx])
+		bwDownAvgTotal = float64(bwDownAvgTotal + bwDownArr[rttIdx])
+	}
+
+	rttAvgTotal = float64(rttAvgTotal) / float64(len(rttArr))
+	rttAvgDuration = time.Duration(rttAvgTotal)
+	newRTTus = rttAvgDuration
+	bwUpAvgTotal = float64(bwUpAvgTotal) / float64(len(bwUpArr))
+	bwDownAvgTotal = float64(bwDownAvgTotal) / float64(len(bwDownArr))
+
+	if len(bwUpArr)%2 == 0 {
+		bwUpMedTotal = ((bwUpArr[len(bwUpArr)-1] / 2) + ((bwUpArr[len(bwUpArr)-1]/2)+1)/2)
+	} else {
+		bwUpMedTotal = (bwUpArr[len(bwUpArr)-1] + 1) / 2
+	}
+
+	if len(bwDownArr)%2 == 0 {
+		bwDownMedTotal = ((bwDownArr[len(bwDownArr)-1] / 2) + ((bwDownArr[len(bwDownArr)-1]/2)+1)/2)
+	} else {
+		bwDownMedTotal = (bwDownArr[len(bwDownArr)-1] + 1) / 2
+	}
+
+	// use median values as optimal bandwidth if more than 20% of maxUL/maxDL.
+	if bwUpMedTotal > (float64(maxUL) * float64(0.2)) {
+		bwUL = bwUpMedTotal
+	}
+
+	if bwUpMedTotal > (float64(maxDL) * float64(0.2)) {
+		bwDL = bwDownMedTotal
+	}
+}
+
+func cakeHandleJSON() {
+	cakeExecTimeArr = append(cakeExecTimeArr, float64(time.Since(cakeExecTime)))
+
+	for execTimeIdx := range cakeExecTimeArr {
+		cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal + cakeExecTimeArr[execTimeIdx])
+	}
+
+	cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal) / float64(len(cakeExecTimeArr))
+	cakeExecTimeAvgDuration = time.Duration(cakeExecTimeAvgTotal)
+
+	cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(time.Millisecond)), (float64(rttAvgDuration) / float64(time.Microsecond))), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Millisecond)), (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Microsecond))), ExecTimeAverageCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeAvgDuration) / float64(time.Millisecond)), (float64(cakeExecTimeAvgDuration) / float64(time.Microsecond)))}
+}
+
+func bufferbloatTrue() {
+	bufferbloatState = true
+}
+
+func bufferbloatFalse() {
+	bufferbloatState = false
+}
+
 func cake() {
 
 	// calculate bandwidth percentage
@@ -243,153 +386,68 @@ func cake() {
 		// counting exec time starts from here
 		cakeExecTime = time.Now()
 
-		// save newRTT to newRTTus
-		newRTTus = newRTT
-
-		// when cakeDataLimit is reached,
-		// remove the first data from the slices.
-		if len(cakeDataJSON) >= cakeDataLimit {
-			cakeDataJSON = cakeDataJSON[1:]
-			rttArr = rttArr[1:]
-			bwUpArr = bwUpArr[1:]
-			bwDownArr = bwDownArr[1:]
-			cakeExecTimeArr = cakeExecTimeArr[1:]
-		}
-
-		//auto-scale & auto-limit max bandwidth to 90%.
-		// should be like this to handle both values separately.
-		if bwUL < bwUL90 {
-			bwUL = bwUL * 2
-		}
-		if bwDL < bwDL90 {
-			bwDL = bwDL * 2
-		}
-		if bwUL >= bwUL90 {
-			bwUL = bwUL90
-		}
-		if bwDL >= bwDL90 {
-			bwDL = bwDL90
-		}
-
-		cakeDataJSON = append(cakeDataJSON, CakeData{RTT: newRTTus, BandwidthUpload: bwUL, BandwidthDownload: bwDL})
-		rttArr = append(rttArr, float64(newRTTus))
-		bwUpArr = append(bwUpArr, bwUL)
-		bwDownArr = append(bwDownArr, bwDL)
-
-		rttAvgTotal = 0
-		rttAvgDuration = 0
-		bwUpAvgTotal = 0
-		bwDownAvgTotal = 0
-		cakeExecTimeAvgTotal = 0
-		cakeExecTimeAvgDuration = 0
-
-		for rttIdx := range rttArr {
-			rttAvgTotal = float64(rttAvgTotal + rttArr[rttIdx])
-			bwUpAvgTotal = float64(bwUpAvgTotal + bwUpArr[rttIdx])
-			bwDownAvgTotal = float64(bwDownAvgTotal + bwDownArr[rttIdx])
-		}
-
-		rttAvgTotal = float64(rttAvgTotal) / float64(len(rttArr))
-		rttAvgDuration = time.Duration(rttAvgTotal)
-		newRTTus = rttAvgDuration
-		bwUpAvgTotal = float64(bwUpAvgTotal) / float64(len(bwUpArr))
-		bwDownAvgTotal = float64(bwDownAvgTotal) / float64(len(bwDownArr))
-
-		if len(bwUpArr)%2 == 0 {
-			bwUL = ((bwUpArr[len(bwUpArr)-1] / 2) + ((bwUpArr[len(bwUpArr)-1]/2)+1)/2)
-		} else {
-			bwUL = (bwUpArr[len(bwUpArr)-1] + 1) / 2
-		}
-
-		if len(bwDownArr)%2 == 0 {
-			bwDL = ((bwDownArr[len(bwDownArr)-1] / 2) + ((bwDownArr[len(bwDownArr)-1]/2)+1)/2)
-		} else {
-			bwDL = (bwDownArr[len(bwDownArr)-1] + 1) / 2
-		}
-
-		// update median values
-		bwUpMedTotal = bwUL
-		bwDownMedTotal = bwDL
-
 		// handle bufferbloat state
 		if bufferbloatState {
 
-			// cubic function.
-			// see https://learn-sys.github.io/cn/slides/r0/week12-1.pdf for the details.
-			// ------
-			// this is T
-			lastBufferbloatTimeElapsed = time.Since(lastBufferbloatTimestamp) / time.Duration(float64(time.Second))
+			cakeBufferbloatBandwidth()
+			cakeQdiscReconfigure()
 
-			// this is K
-			kUL = math.Cbrt((bwUL * (1 - B) / C))
-			kDL = math.Cbrt((bwDL * (1 - B) / C))
+			// then restore the bandwidth over time.
+			// if the bandwidth ratio is 1:1,
+			// then increase both values at the same time.
+			if maxUL == maxDL {
+				for bwUL < bwUL90 {
 
-			// check T
-			bwUL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kUL), 3) + bwUL
-			bwDL = C*math.Pow((float64(lastBufferbloatTimeElapsed)-kDL), 3) + bwDL
+					cakeCheckArrays()
+					cakeAppendValues()
+					cakeMultiplyBandwidth()
+					cakeConvertRTTtoMicroseconds()
+					cakeNormalizeRTT()
+					cakeAutoSplitGSO()
+					cakeQdiscReconfigure()
+				}
 
-			// prevent bandwidth too low
-			if bwUL < Mbit {
-				bwUL = Mbit
+			} else {
+
+				// if the bandwidth ratio isn't 1:1,
+				// then handle them separately.
+				for bwUL < bwUL90 || bwDL < bwDL90 {
+
+					cakeCheckArrays()
+					cakeAppendValues()
+					cakeMultiplyBandwidth()
+					cakeConvertRTTtoMicroseconds()
+					cakeNormalizeRTT()
+					cakeAutoSplitGSO()
+					cakeQdiscReconfigure()
+				}
+
 			}
-			if bwDL < Mbit {
-				bwDL = Mbit
-			}
 
-			if bwUL > (10 * Mbit) {
-				bwUL = 10 * Mbit
-			}
-			if bwDL > (10 * Mbit) {
-				bwDL = 10 * Mbit
-			}
-
-			bufferbloatState = false
+			bufferbloatFalse()
 		}
 
-		// normalize RTT
-		if newRTTus < metroRTT {
-			newRTTus = metroRTT
-		} else if newRTTus > satelliteRTT {
-			newRTTus = satelliteRTT
+		cakeCheckArrays()
+		cakeAppendValues()
+		cakeCalculateRTTandBandwidth()
+		cakeConvertRTTtoMicroseconds()
+		cakeNormalizeRTT()
+		cakeAutoSplitGSO()
+		cakeQdiscReconfigure()
+
+		// keep increasing current bandwidth in there's no bufferbloat.
+		for bwUL < bwUL90 || bwDL < bwDL90 {
+
+			cakeCheckArrays()
+			cakeAppendValues()
+			cakeMultiplyBandwidth()
+			cakeConvertRTTtoMicroseconds()
+			cakeNormalizeRTT()
+			cakeAutoSplitGSO()
+			cakeQdiscReconfigure()
 		}
 
-		// convert to microseconds
-		newRTTus = newRTTus / time.Microsecond
-
-		// use autoSplitGSO
-		if bwUL < (100*Mbit) || bwDL < (100*Mbit) {
-			autoSplitGSO = "split-gso"
-		} else if bwUL > (100*Mbit) || bwDL > (100*Mbit) {
-			autoSplitGSO = "no-split-gso"
-		}
-
-		// set uplink
-		cakeUplink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", uplinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwUL), fmt.Sprintf("%v", autoSplitGSO))
-		output, err := cakeUplink.Output()
-
-		if err != nil {
-			fmt.Println(err.Error() + ": " + string(output))
-			return
-		}
-		// set downlink
-		cakeDownlink := exec.Command("tc", "qdisc", "replace", "dev", fmt.Sprintf("%v", downlinkInterface), "root", "cake", "rtt", fmt.Sprintf("%dus", newRTTus), "bandwidth", fmt.Sprintf("%fkbit", bwDL), fmt.Sprintf("%v", autoSplitGSO))
-		output, err = cakeDownlink.Output()
-
-		if err != nil {
-			fmt.Println(err.Error() + ": " + string(output))
-			return
-		}
-
-		cakeExecTimeArr = append(cakeExecTimeArr, float64(time.Since(cakeExecTime)))
-
-		for execTimeIdx := range cakeExecTimeArr {
-			cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal + cakeExecTimeArr[execTimeIdx])
-		}
-
-		cakeExecTimeAvgTotal = float64(cakeExecTimeAvgTotal) / float64(len(cakeExecTimeArr))
-		cakeExecTimeAvgDuration = time.Duration(cakeExecTimeAvgTotal)
-
-		cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(time.Millisecond)), (float64(rttAvgDuration) / float64(time.Microsecond))), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Millisecond)), (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Microsecond))), ExecTimeAverageCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeAvgDuration) / float64(time.Millisecond)), (float64(cakeExecTimeAvgDuration) / float64(time.Microsecond)))}
+		cakeHandleJSON()
 
 	}
 }
@@ -549,11 +607,8 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// check if the real RTT increases (unstable) or not.
 		if newRTT > oldRTT {
 
-			// update timestamp
-			lastBufferbloatTimestamp = time.Now()
-
 			// update bufferbloat status
-			bufferbloatState = true
+			bufferbloatTrue()
 
 		}
 

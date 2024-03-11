@@ -61,7 +61,7 @@ Below are the CC algorithms that we have tested and worked well with `dnscrypt-c
 5. `htcp` — The [H-TCP](https://en.wikipedia.org/wiki/H-TCP) TCP CC
 6. `highspeed` — The [High Speed](https://en.wikipedia.org/wiki/HSTCP) TCP CC
 7. `yeah` — The [YeAH](https://www.gdt.id.au/~gdt/presentations/2010-07-06-questnet-tcp/reference-materials/papers/baiocchi+castellani+vacirca-yeah-tcp-yet-another-highspeed-tcp.pdf) TCP CC
-8. `bbr` — The [BBR](https://github.com/google/bbr) TCP CC (tested both old and v3)
+8. `bbr` — The [BBR](https://github.com/google/bbr) TCP CC (v1 and v3)
 
 > [!IMPORTANT]
 >
@@ -73,7 +73,9 @@ Below are the CC algorithms that we have tested and worked well with `dnscrypt-c
 ## How it works
 #### [:arrow_up: Go to Table of Contents](https://github.com/galpt/dnscrypt-cake?tab=readme-ov-file#table-of-contents)
 
-![Workflow](https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg)
+<p align="center">
+  <img src="https://github.com/galpt/dnscrypt-cake/blob/main/img/dnscrypt-cake.jpg">
+</p>
 
 1. When a latency increase is detected, `dnscrypt-cake` will try to check if the DNS latency is in the range of 10ms - 1000ms or not.
 If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less than 10ms, and `rtt 1000ms` if it's more than 1000ms.
@@ -82,9 +84,7 @@ If yes, then use that as CAKE's `rtt`, if not then use `rtt 10ms` if it's less t
 
 > [!NOTE]
 >
-> Using a cubic function is just one part of the entire logic. The `cake()` function will configure CAKE and re-calculate `rtt` and `bandwidth`, then save the latest data into several slices/arrays.
->
-> The arrays can hold up to 10 million data, and the `cake()` function will loop infinitely with a 1 millisecond sleep for each loop. All data will be used to calculate the final values for configuring CAKE's `rtt` and `bandwidth`.
+> The `cake()` function will configure CAKE and re-calculate `rtt` and `bandwidth`, then save the latest data into several slices/arrays. The arrays can hold up to 10 million data, and the `cake()` function will loop infinitely with a 1 millisecond sleep for each loop. All data will be used to calculate the final values for configuring CAKE's `rtt` and `bandwidth`.
 >
 > This is an attempt to intelligently configure CAKE's `rtt` and `bandwidth` based on all the data, so it doesn't need to aggressively probe DNS servers like what the original [cake-autorate](https://github.com/lynxthecat/cake-autorate) implementation does.
 
