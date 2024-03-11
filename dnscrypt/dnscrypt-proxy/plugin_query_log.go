@@ -271,8 +271,10 @@ func cakeConvertRTTtoMicroseconds() {
 }
 
 func cakeAutoSplitGSO() {
-	// automatically use "split-gso" when bandwidth is less than 50%.
-	if bwUL < (float64(bwUL)*float64(0.5)) || bwDL < (float64(bwDL)*float64(0.5)) {
+	// automatically use "split-gso" when bandwidth is less than 50% of maxUL/maxDL.
+	// for faster recovery in a server-like environment, it's better to only use split-gso
+	// when the current bandwidth is less than 100 Mbit/s.
+	if bwUL < (100*Mbit) || bwDL < (100*Mbit) {
 		autoSplitGSO = "split-gso"
 	} else {
 		autoSplitGSO = "no-split-gso"
@@ -301,8 +303,30 @@ func cakeQdiscReconfigure() {
 
 func cakeBufferbloatBandwidth() {
 	// when a bufferbloat is detected, we should slow things down.
-	bwUL = float64(bwUL) * float64(0.2)
-	bwDL = float64(bwDL) * float64(0.2)
+	if maxUL == maxDL {
+		// downscale bandwidth to 100 Mbit/s,
+		// but avoid bandwidth too low.
+		if (float64(bwUL) * float64(0.2)) < (100 * Mbit) {
+			bwUL = float64(bwUL) * float64(0.2)
+			bwDL = float64(bwUL) * float64(0.2)
+		} else {
+			bwUL = 100 * Mbit
+			bwDL = 100 * Mbit
+		}
+	} else {
+
+		if (float64(bwUL) * float64(0.2)) < (100 * Mbit) {
+			bwUL = float64(bwUL) * float64(0.2)
+		} else {
+			bwUL = 100 * Mbit
+		}
+
+		if (float64(bwDL) * float64(0.2)) < (100 * Mbit) {
+			bwDL = float64(bwUL) * float64(0.2)
+		} else {
+			bwDL = 100 * Mbit
+		}
+	}
 }
 
 func cakeCalculateRTTandBandwidth() {
@@ -444,7 +468,7 @@ func cake() {
 		cakeAutoSplitGSO()
 		cakeQdiscReconfigure()
 
-		// keep increasing current bandwidth in there's no bufferbloat.
+		// keep increasing current bandwidth if there's no bufferbloat.
 		for bwUL < bwUL90 || bwDL < bwDL90 {
 
 			cakeCheckArrays()
@@ -459,7 +483,6 @@ func cake() {
 
 		cakeHandleAvgRTT()
 		cakeQdiscReconfigure()
-
 		cakeHandleJSON()
 
 	}
@@ -620,8 +643,10 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 		// check if the real RTT increases (unstable) or not.
 		if newRTT > oldRTT {
 
-			// update bufferbloat status
-			bufferbloatTrue()
+			if !bufferbloatState {
+				// update bufferbloat status
+				bufferbloatTrue()
+			}
 
 		}
 
