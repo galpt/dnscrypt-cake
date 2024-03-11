@@ -94,14 +94,10 @@ var (
 	// default to 100ms rtt.
 	// in Go, "time.Duration" defaults to nanoseconds.
 	newRTT   time.Duration = 100000000 // this is in nanoseconds
-	oldRTT   time.Duration = 100000000 // this is in nanoseconds
 	newRTTus time.Duration = 100000    // this will be in microseconds
 
 	// decide whether split-gso should be used or not.
 	autoSplitGSO = "split-gso"
-
-	// bufferbloat state
-	bufferbloatState = false
 
 	cakeJSON     Cake
 	cakeDataJSON []CakeData
@@ -390,19 +386,11 @@ func cakeHandleJSON() {
 	cakeJSON = Cake{RTTAverage: rttAvgDuration, RTTAverageString: fmt.Sprintf("%.2f ms | %.2f μs", (float64(rttAvgDuration) / float64(1000.00)), float64(rttAvgDuration)), BwUpAverage: bwUpAvgTotal, BwUpAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpAvgTotal, (bwUpAvgTotal / Mbit)), BwDownAverage: bwDownAvgTotal, BwDownAverageString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownAvgTotal, (bwDownAvgTotal / Mbit)), BwUpMedian: bwUpMedTotal, BwUpMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwUpMedTotal, (bwUpMedTotal / Mbit)), BwDownMedian: bwDownMedTotal, BwDownMedianString: fmt.Sprintf("%.2f kbit | %.2f Mbit", bwDownMedTotal, (bwDownMedTotal / Mbit)), DataTotal: fmt.Sprintf("%v of %v", len(cakeDataJSON), cakeDataLimit), ExecTimeCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Millisecond)), (float64(cakeExecTimeArr[len(cakeExecTimeArr)-1]) / float64(time.Microsecond))), ExecTimeAverageCAKE: fmt.Sprintf("%.2f ms | %.2f μs", (float64(cakeExecTimeAvgDuration) / float64(time.Millisecond)), (float64(cakeExecTimeAvgDuration) / float64(time.Microsecond)))}
 }
 
-func bufferbloatTrue() {
-	bufferbloatState = true
-}
-
-func bufferbloatFalse() {
-	bufferbloatState = false
-}
-
 func cake() {
 
-	// calculate bandwidth percentage
-	bwUL90 = ((maxUL * 90) / 100)
-	bwDL90 = ((maxDL * 90) / 100)
+	// calculate 90% bandwidth percentage
+	bwUL90 = float64(maxUL) * float64(0.9)
+	bwDL90 = float64(maxDL) * float64(0.9)
 
 	// set last bandwidth values
 	bwUL = maxUL
@@ -411,14 +399,14 @@ func cake() {
 	// infinite loop to change cake parameters in real-time
 	for {
 
-		// sleep for 1 millisecond
-		time.Sleep(time.Millisecond)
+		// sleep for 100 microseconds
+		time.Sleep(100 * time.Microsecond)
 
 		// counting exec time starts from here
 		cakeExecTime = time.Now()
 
 		// handle bufferbloat state
-		if bufferbloatState {
+		if (float64(newRTT) / float64(time.Microsecond)) > float64(rttAvgDuration) {
 
 			cakeBufferbloatBandwidth()
 			cakeQdiscReconfigure()
@@ -457,7 +445,6 @@ func cake() {
 
 			}
 
-			bufferbloatFalse()
 		}
 
 		cakeCheckArrays()
@@ -639,19 +626,6 @@ func (plugin *PluginQueryLog) Eval(pluginsState *PluginsState, msg *dns.Msg) err
 
 		// save DNS latency as the new RTT for cake
 		newRTT = requestDuration
-
-		// check if the real RTT increases (unstable) or not.
-		if newRTT > oldRTT {
-
-			if !bufferbloatState {
-				// update bufferbloat status
-				bufferbloatTrue()
-			}
-
-		}
-
-		// update oldRTT
-		oldRTT = newRTT
 
 	} else if plugin.format == "ltsv" {
 		cached := 0
