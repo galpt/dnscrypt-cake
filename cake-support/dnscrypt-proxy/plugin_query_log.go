@@ -235,12 +235,12 @@ func cakeAppendValues() {
 
 func cakeMultiplyBandwidth() {
 
-	// multiply the values by 2 if they're less than 90%.
+	// multiply the values by 16 if they're less than 90%.
 	if bwUL < bwUL90 {
-		bwUL *= 2
+		bwUL *= 16
 	}
 	if bwDL < bwDL90 {
-		bwDL *= 2
+		bwDL *= 16
 	}
 
 	// limit current bandwidth values to 90% of maximum bandwidth specified.
@@ -300,27 +300,59 @@ func cakeQdiscReconfigure() {
 func cakeBufferbloatBandwidth() {
 	// when a bufferbloat is detected, we should slow things down.
 	if maxUL == maxDL {
-		// downscale bandwidth to 100 Mbit/s,
+		// downscale bandwidth to 1 Mbit/s,
 		// but avoid bandwidth too low.
-		if (float64(bwUL) * float64(0.2)) < (100 * Mbit) {
+		if (float64(bwUL) * float64(0.2)) < (1 * Mbit) {
 			bwUL = float64(bwUL) * float64(0.2)
-			bwDL = float64(bwUL) * float64(0.2)
+			bwDL = float64(bwDL) * float64(0.2)
+			cakeQdiscReconfigure()
+
+			bwUL = 1 * Mbit
+			bwDL = 1 * Mbit
+			cakeQdiscReconfigure()
+
+			bwUL = 16 * Mbit
+			bwDL = 16 * Mbit
+			cakeQdiscReconfigure()
+
 		} else {
-			bwUL = 100 * Mbit
-			bwDL = 100 * Mbit
+			bwUL = 1 * Mbit
+			bwDL = 1 * Mbit
+			cakeQdiscReconfigure()
+
+			bwUL = 16 * Mbit
+			bwDL = 16 * Mbit
+			cakeQdiscReconfigure()
 		}
 	} else {
 
 		if (float64(bwUL) * float64(0.2)) < (100 * Mbit) {
 			bwUL = float64(bwUL) * float64(0.2)
+			cakeQdiscReconfigure()
+			bwUL = 1 * Mbit
+			cakeQdiscReconfigure()
+			bwUL = 16 * Mbit
+			cakeQdiscReconfigure()
+
 		} else {
-			bwUL = 100 * Mbit
+			bwUL = 1 * Mbit
+			cakeQdiscReconfigure()
+			bwUL = 16 * Mbit
+			cakeQdiscReconfigure()
 		}
 
 		if (float64(bwDL) * float64(0.2)) < (100 * Mbit) {
-			bwDL = float64(bwUL) * float64(0.2)
+			bwDL = float64(bwDL) * float64(0.2)
+			cakeQdiscReconfigure()
+			bwDL = 1 * Mbit
+			cakeQdiscReconfigure()
+			bwDL = 16 * Mbit
+			cakeQdiscReconfigure()
 		} else {
-			bwDL = 100 * Mbit
+			bwDL = 1 * Mbit
+			cakeQdiscReconfigure()
+			bwDL = 16 * Mbit
+			cakeQdiscReconfigure()
 		}
 	}
 }
