@@ -218,11 +218,11 @@ func cakeCheckArrays() {
 	// when cakeDataLimit is reached,
 	// remove the first data from the slices.
 	if len(cakeDataJSON) >= cakeDataLimit {
-		cakeDataJSON = cakeDataJSON[1:]
-		rttArr = rttArr[1:]
-		bwUpArr = bwUpArr[1:]
-		bwDownArr = bwDownArr[1:]
-		cakeExecTimeArr = cakeExecTimeArr[1:]
+		cakeDataJSON = nil
+		rttArr = nil
+		bwUpArr = nil
+		bwDownArr = nil
+		cakeExecTimeArr = nil
 	}
 }
 
