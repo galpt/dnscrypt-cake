@@ -79,7 +79,7 @@ const (
 	Kilobyte      = 1 << 10
 	timeoutTr     = 30 * time.Second
 	hostPortGin   = "0.0.0.0:22222"
-	cakeDataLimit = 10000000 // 10 million
+	cakeDataLimit = 100000 // 100K
 	usrAgent      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 )
 
